@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Controle de Materiais</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%A6%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#eef1f4;--surface:#fff;--surface2:#f3f5f8;--text:#18212c;--muted:#5d6978;--line:#d9dfe6;--focus:#1f6fd0;
+  --pri:#1f5fa8;--pri-h:#17497f;--ok:#2d7a28;--ok-h:#23601f;--bad:#a32424;--bad-h:#821b1b;
+  --info-bg:#e1edfa;--info-fg:#174d8a;--ok-bg:#e4f1e1;--ok-fg:#27661f;--bad-bg:#fbe5e5;--bad-fg:#8f1f1f;
+  --loc-bg:#ebe6f8;--loc-fg:#533299;--warn-bg:#faeed2;--warn-fg:#7a4a05;--mark:#fbe38a;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0f1318;--surface:#181e26;--surface2:#212a35;--text:#e7ebf0;--muted:#97a3b3;--line:#2c3643;--focus:#6aa8f0;
+  --pri:#2b6bb8;--pri-h:#3a7bc9;--ok:#368a30;--ok-h:#43a03c;--bad:#c23a3a;--bad-h:#d64d4d;
+  --info-bg:#173152;--info-fg:#9cc7f4;--ok-bg:#173a15;--ok-fg:#a6dba0;--bad-bg:#4a1c1c;--bad-fg:#f2aaaa;
+  --loc-bg:#2d2350;--loc-fg:#cbb9f5;--warn-bg:#47330f;--warn-fg:#f0cf8a;--mark:#6b5a12;
+}}
+*{box-sizing:border-box;margin:0}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:var(--text);background:var(--bg);padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+body.noscroll{overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.wrap{max-width:980px;margin:0 auto;padding:12px}
+h1{font-size:17px;font-weight:700}
+h3{font-size:16px;font-weight:700}
+mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
+code{background:var(--surface2);padding:1px 5px;border-radius:4px;font-size:12px}
+
+/* topo */
+.top{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px}
+.top-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.stats{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.stat{flex:1 1 90px;background:var(--surface2);border-radius:8px;padding:6px 10px}
+.stat b{display:block;font-size:19px;line-height:1.2}
+.stat span{font-size:11px;color:var(--muted)}
+.tabs{display:flex;gap:4px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+.tab{flex:0 0 auto;border:1px solid transparent;background:transparent;color:var(--muted);font-weight:600;font-size:13px;padding:8px 12px;border-radius:8px;cursor:pointer;white-space:nowrap}
+.tab:hover{background:var(--surface2);color:var(--text)}
+.tab.on{background:var(--surface2);border-color:var(--line);color:var(--text)}
+.notif{display:inline-block;margin-left:5px;min-width:18px;text-align:center;font-size:11px;font-weight:700;padding:1px 6px;border-radius:99px;background:var(--bad);color:#fff}
+
+/* controles */
+.btn{font-weight:600;font-size:13px;min-height:36px;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--surface2)}
+.btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}.btn.pri:hover{background:var(--pri-h)}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}.btn.ok:hover{background:var(--ok-h)}
+.btn.bad{background:var(--bad);border-color:var(--bad);color:#fff}.btn.bad:hover{background:var(--bad-h)}
+.btn.ghost-bad{color:var(--bad-fg);border-color:var(--bad)}
+.btn.sm{min-height:32px;padding:4px 10px;font-size:12px}
+.link{background:none;border:0;color:var(--info-fg);text-decoration:underline;cursor:pointer;font-size:12px;padding:0 2px}
+input,select,textarea{width:100%;min-height:38px;padding:7px 10px;font-size:16px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+textarea{min-height:70px;resize:vertical}
+label{display:block;font-size:12px;color:var(--muted);margin:0 0 3px}
+.field{margin-bottom:12px}
+.row2{display:flex;gap:10px}.row2>*{flex:1;min-width:0}
+.hint{font-size:12px;color:var(--muted);margin-bottom:8px;line-height:1.5}
+.erro{font-size:13px;color:var(--bad-fg);min-height:18px;margin:4px 0 8px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.bar input[type=search]{flex:1 1 200px}
+.bar select{flex:0 1 auto;width:auto;min-width:140px}
+.check{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);margin:0;cursor:pointer}
+.check input{width:auto;min-height:0}
+.seg{display:flex;gap:6px;margin-bottom:10px}
+.seg-b{border:1px solid var(--line);background:transparent;color:var(--muted);font-size:12px;font-weight:600;padding:5px 12px;border-radius:8px;cursor:pointer}
+.seg-b.on{background:var(--surface2);color:var(--text);border-color:var(--muted)}
+
+/* selos */
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap}
+.b-info{background:var(--info-bg);color:var(--info-fg)}.b-ok{background:var(--ok-bg);color:var(--ok-fg)}
+.b-bad{background:var(--bad-bg);color:var(--bad-fg)}.b-loc{background:var(--loc-bg);color:var(--loc-fg)}
+.b-warn{background:var(--warn-bg);color:var(--warn-fg)}.b-mute{background:var(--surface2);color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:3px;background:var(--surface2);color:var(--muted);padding:1px 8px;border-radius:99px;font-size:11px}
+
+/* itens */
+.item{display:flex;gap:10px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-left-width:3px;border-radius:10px;padding:10px 12px;margin-bottom:6px}
+.item.is-rec{opacity:.72}
+.item-main{flex:1;min-width:0}
+.item-nome{font-weight:600;font-size:14px;overflow-wrap:anywhere}
+.meta{display:flex;flex-wrap:wrap;gap:5px;align-items:center;font-size:12px;color:var(--muted);margin-top:3px}
+.obs{font-size:12px;color:var(--muted);font-style:italic;margin-top:4px;overflow-wrap:anywhere}
+.recinfo{font-size:12px;color:var(--ok-fg);margin-top:4px}
+.item-act{display:flex;flex-direction:column;gap:6px;align-items:stretch;flex:0 0 auto}
+.chegou{min-width:96px;min-height:40px;font-weight:700;font-size:13px;border-radius:8px;border:1px solid var(--line);background:var(--surface);cursor:pointer}
+.chegou:hover{border-color:var(--ok);color:var(--ok-fg)}
+.chegou.on{background:var(--ok);border-color:var(--ok);color:#fff}
+.chegou.on:hover{background:var(--bad);border-color:var(--bad);color:#fff}
+.item.est-livre{border-left-color:var(--ok)}.item.est-dest{border-left-color:#c58a1a}.item.est-comprar{border-left-color:var(--bad)}
+@media (max-width:520px){.item{flex-direction:column}.item-act{flex-direction:row;width:100%}.item-act>*{flex:1}}
+
+/* projetos */
+.proj{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-bottom:10px}
+.proj.oculto{opacity:.55}
+.proj-h{display:flex;align-items:center;gap:8px;padding:10px 12px;flex-wrap:wrap}
+.proj-toggle{flex:1 1 180px;display:flex;align-items:center;gap:8px;background:none;border:0;text-align:left;cursor:pointer;min-height:36px}
+.proj-toggle b{font-size:15px;overflow-wrap:anywhere}
+.proj-b{padding:0 12px 10px}
+.proj-b .item{margin-bottom:0;border-radius:0;border-width:0 0 1px 0;border-left-width:0;padding-left:0;padding-right:0}
+.proj-b .item:last-child{border-bottom:0}
+
+/* cartões do estoque */
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.card-b{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;text-align:left;cursor:pointer}
+.card-b.sel{border-color:var(--pri);background:var(--surface2)}
+.card-b b{display:block;font-size:22px}.card-b span{font-size:12px;color:var(--muted)}
+
+/* compras / avisos */
+.grp{margin-bottom:16px}
+.grp-t{font-size:13px;font-weight:700;color:var(--muted);margin-bottom:8px}
+.aviso{background:var(--surface);border:1px solid var(--line);border-left-width:3px;border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.aviso.comprar{border-left-color:var(--bad)}.aviso.aloc{border-left-color:#7b5bd0}
+.aviso-l{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--line);font-size:13px}
+.aviso-l:first-of-type{border-top:0}
+.aviso-l .nome{flex:1 1 160px;overflow-wrap:anywhere}
+
+/* mensagens */
+.msg{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;max-width:640px}
+.msg.mine{margin-left:auto;background:var(--surface2)}
+.msg-h{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--muted);margin-bottom:3px;flex-wrap:wrap}
+.msg-h strong{color:var(--text);font-size:13px}
+.msg-t{white-space:pre-wrap;overflow-wrap:anywhere}
+.compose{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+.tpl{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+
+.empty{text-align:center;padding:32px 16px;color:var(--muted);font-size:14px}
+
+/* janelas */
+.mb{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;display:flex;align-items:center;justify-content:center;padding:12px}
+.mc{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;width:min(540px,100%);max-height:92vh;overflow-y:auto}
+.mc.small{width:min(400px,100%);text-align:center}
+.mt{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.x{background:none;border:0;font-size:20px;line-height:1;cursor:pointer;color:var(--muted);padding:4px 8px}
+.acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px}
+.acts .sp{flex:1}
+.sect{font-size:12px;font-weight:700;color:var(--muted);margin:16px 0 8px}
+.tchips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.tchip{border:1px solid var(--line);background:transparent;color:var(--muted);font-weight:600;font-size:12px;padding:6px 14px;border-radius:99px;cursor:pointer}
+.tchip.on[data-t=forn]{background:var(--info-bg);color:var(--info-fg);border-color:var(--info-fg)}
+.tchip.on[data-t=comprar]{background:var(--bad-bg);color:var(--bad-fg);border-color:var(--bad-fg)}
+.tchip.on[data-t=aloc]{background:var(--loc-bg);color:var(--loc-fg);border-color:var(--loc-fg)}
+.lb-row{display:grid;grid-template-columns:1fr 90px 1fr 36px;gap:6px;align-items:end;margin-bottom:8px}
+@media (max-width:520px){.lb-row{grid-template-columns:1fr 1fr;}.lb-row>div:first-child{grid-column:1/-1}}
+.al-row{display:flex;gap:6px;align-items:end;margin-bottom:6px}
+.al-row .al-p{flex:1}.al-row .al-q{width:90px}
+.conf-ico{font-size:34px;margin-bottom:6px}
+.mc.small p{font-size:14px;color:var(--muted);margin:6px 0 16px;line-height:1.55}
+.conf-btns{display:flex;gap:10px;justify-content:center}
+.menu-b{display:block;width:100%;text-align:left;margin-bottom:8px}
+
+/* entrada */
+.gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.gate-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;width:min(400px,100%)}
+.gate-card h1{margin-bottom:8px}
+.gate-card p{font-size:14px;color:var(--muted);margin-bottom:14px;line-height:1.55}
+.gate-card .btn{width:100%;margin-top:4px}
+
+#toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#1f2630;color:#fff;padding:9px 18px;border-radius:99px;font-size:13px;z-index:900;opacity:0;pointer-events:none;transition:opacity .25s;max-width:92vw;text-align:center}
+#toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+</head>
+<body>
+
+<div id="gate" class="gate" hidden></div>
+
+<div id="app" hidden>
+<div class="wrap">
+  <header class="top">
+    <div class="top-row">
+      <h1>📦 Controle de Materiais</h1>
+      <button class="btn sm" data-act="menu" id="btn-user" aria-haspopup="dialog"></button>
+    </div>
+    <div class="stats" id="stats"></div>
+    <nav class="tabs" id="tabs" aria-label="Seções"></nav>
+  </header>
+
+  <main>
+    <section class="page" id="page-mat" hidden>
+      <div class="bar">
+        <input id="f-mat-q" type="search" placeholder="Buscar material ou fornecedor…" aria-label="Buscar material ou fornecedor" autocomplete="off">
+        <select id="f-mat-proj" aria-label="Filtrar por projeto"></select>
+        <select id="f-mat-st" aria-label="Filtrar por situação">
+          <option value="pend">Pendentes</option><option value="rec">Recebidos</option><option value="">Todos</option>
+        </select>
+      </div>
+      <div id="list-mat"></div>
+    </section>
+
+    <section class="page" id="page-proj" hidden>
+      <div class="bar">
+        <input id="f-proj-q" type="search" placeholder="Buscar projeto…" aria-label="Buscar projeto" autocomplete="off">
+        <label class="check"><input type="checkbox" id="f-proj-ocultos"> Ver ocultos</label>
+        <button class="btn pri" data-act="novo-proj">+ Novo projeto</button>
+      </div>
+      <div id="list-proj"></div>
+    </section>
+
+    <section class="page" id="page-est" hidden>
+      <div class="cards">
+        <button class="card-b" id="ec-todos" data-act="est-card" data-v=""><b id="en-todos">0</b><span>Em estoque (total)</span></button>
+        <button class="card-b" id="ec-livre" data-act="est-card" data-v="livre"><b id="en-livre">0</b><span>Livres (sem projeto)</span></button>
+        <button class="card-b" id="ec-dest" data-act="est-card" data-v="dest"><b id="en-dest">0</b><span>Destinados a projeto</span></button>
+      </div>
+      <div class="bar">
+        <input id="f-est-q" type="search" placeholder="Buscar material ou fornecedor…" aria-label="Buscar no estoque" autocomplete="off">
+        <select id="f-est-proj" aria-label="Filtrar por projeto"></select>
+        <select id="f-est-st" aria-label="Filtrar por situação">
+          <option value="">Em estoque (todos)</option><option value="livre">Só livres</option><option value="dest">Só destinados</option><option value="comprar">Falta comprar</option>
+        </select>
+        <button class="btn pri" data-act="novo-est">+ Adicionar ao estoque</button>
+      </div>
+      <div id="list-est"></div>
+    </section>
+
+    <section class="page" id="page-compras" hidden>
+      <div class="bar">
+        <input id="f-cp-q" type="search" placeholder="Buscar material, projeto ou fornecedor…" aria-label="Buscar em compras" autocomplete="off">
+        <select id="f-cp-proj" aria-label="Filtrar por projeto"></select>
+        <select id="f-cp-st" aria-label="Filtrar por situação">
+          <option value="comprar">Precisa comprar</option><option value="comprado">Já comprado</option><option value="">Todos</option>
+        </select>
+        <button class="btn" data-act="export">Exportar lista</button>
+      </div>
+      <div id="list-compras"></div>
+    </section>
+
+    <section class="page" id="page-avisos" hidden>
+      <p class="hint">Itens que faltam comprar e itens alocados em outros projetos.</p>
+      <div id="list-avisos"></div>
+    </section>
+
+    <section class="page" id="page-msg" hidden>
+      <div class="compose">
+        <label for="msg-txt">Escreva um recado para a equipe</label>
+        <textarea id="msg-txt" rows="3" maxlength="2000" placeholder="Ex.: Recebi os eletrodutos hoje. / Galera, precisa comprar disjuntor 20A."></textarea>
+        <div class="tpl">
+          <button class="btn sm" data-act="msg-tpl" data-t="Recebido: ">✓ Recebido</button>
+          <button class="btn sm" data-act="msg-tpl" data-t="Comprado: ">🛒 Comprado</button>
+          <button class="btn sm" data-act="msg-tpl" data-t="Precisa comprar: ">⚠️ Precisa comprar</button>
+        </div>
+        <div class="acts" style="margin-top:0"><button class="btn pri" data-act="msg-send">Enviar</button></div>
+      </div>
+      <div id="list-msg"></div>
+    </section>
+  </main>
+</div>
+</div>
+
+<div class="mb" id="modal" hidden><div class="mc" id="modal-box" role="dialog" aria-modal="true"></div></div>
+<div class="mb" id="confirm" hidden style="z-index:600"><div class="mc small" id="confirm-box" role="alertdialog" aria-modal="true"></div></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- Ligação com o banco (chave pública; os dados só abrem com o código da equipe) ---------- */
+var SUPABASE_URL = 'https://kqgkljfpwzpqkwnlplbt.supabase.co';
+var SUPABASE_KEY = 'sb_publishable_8b0gABcRFKa1wxriIVXLQA__qXMChku';
+
+/* ---------- Estado ---------- */
+var S = { projetos:[], itens:[], estoque:[], mensagens:[] };
+var TABELAS = ['projetos','itens','estoque','mensagens'];
+var codigo = lsGet('cm_codigo') || '';
+var nome = lsGet('cm_nome') || '';
+var uid = lsGet('cm_uid') || '';
+var lido = lsGet('cm_lido') || '';
+var tab = 'mat';
+var abertos = {};          // pastas de projeto abertas (só neste aparelho)
+var logado = false;
+var pend = 0;
+var seq = 0;
+var avisouRede = false;
+var confirmOk = null;
+
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function lsDel(k){ try{ localStorage.removeItem(k); }catch(e){} }
+
+function $(id){ return document.getElementById(id); }
+function val(id){ var e=$(id); return e ? e.value.trim() : ''; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function hl(s,q){
+  s = String(s==null?'':s);
+  if(!q) return esc(s);
+  var low=s.toLowerCase(), ql=q.toLowerCase(), out='', i=0, j;
+  while((j=low.indexOf(ql,i))>=0){ out+=esc(s.slice(i,j))+'<mark>'+esc(s.slice(j,j+q.length))+'</mark>'; i=j+q.length; }
+  return out+esc(s.slice(i));
+}
+function fmt(iso){
+  if(!iso) return '—';
+  var d=new Date(iso); if(isNaN(d)) return '—';
+  return d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+function newId(){ seq=(seq+1)%1296; return 'x'+Date.now().toString(36)+('0'+seq.toString(36)).slice(-2)+Math.random().toString(36).slice(2,6); }
+function ord(){ seq=(seq+1)%1000; return Date.now()*1000+seq; }
+if(!uid){ uid=newId(); lsSet('cm_uid',uid); }
+
+var toastT;
+function toast(msg){
+  var t=$('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(function(){ t.classList.remove('show'); },2600);
+}
+
+/* ---------- Chamadas ao banco ---------- */
+function rpc(fn,args){
+  return fetch(SUPABASE_URL+'/rest/v1/rpc/'+fn,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY},
+    body:JSON.stringify(args||{})
+  }).then(function(res){
+    if(!res.ok) throw {tipo:'http',status:res.status};
+    return res.json();
+  },function(){ throw {tipo:'rede'}; });
+}
+
+function flat(r){ var o=Object.assign({},r.dados); o.id=r.id; o.criado_em=r.criado_em; return o; }
+
+function carregar(){
+  return Promise.all(TABELAS.map(function(t){ return rpc('app_listar',{p_codigo:codigo,p_tabela:t}); })).then(function(rs){
+    for(var i=0;i<rs.length;i++){
+      if(rs[i].erro==='invalido'||rs[i].erro==='sem_codigo'){
+        codigo=''; lsDel('cm_codigo'); logado=false;
+        mostrarEntrar('O código foi alterado ou não confere. Digite o código atual.');
+        return false;
+      }
+      if(rs[i].erro==='bloqueado'){ logado=false; mostrarEntrar('Muitas tentativas erradas. Aguarde 10 minutos e tente de novo.'); return false; }
+      if(!rs[i].ok) throw {tipo:'erro',detalhe:rs[i].erro};
+    }
+    TABELAS.forEach(function(t,i){
+      var arr=rs[i].registros.map(flat);
+      if(t==='itens'||t==='estoque') arr.sort(function(a,b){ return (a.ord||0)-(b.ord||0); });
+      S[t]=arr;
+    });
+    avisouRede=false;
+    return true;
+  });
+}
+
+function gravar(tabela,obj){
+  var dados=Object.assign({},obj); delete dados.id; delete dados.criado_em; delete dados.atualizado_em;
+  pend++;
+  return rpc('app_gravar',{p_codigo:codigo,p_tabela:tabela,p_id:obj.id,p_dados:dados}).then(function(r){
+    if(!r.ok) throw {tipo:'erro',detalhe:r.erro};
+  }).catch(falhaGravar).then(function(){ pend--; });
+}
+function gravarVarios(tabela,lista){
+  if(!lista.length) return Promise.resolve();
+  var regs=lista.map(function(o){ var d=Object.assign({},o); delete d.id; delete d.criado_em; delete d.atualizado_em; return {id:o.id,dados:d}; });
+  pend++;
+  return rpc('app_gravar_varios',{p_codigo:codigo,p_tabela:tabela,p_registros:regs}).then(function(r){
+    if(!r.ok) throw {tipo:'erro',detalhe:r.erro};
+  }).catch(falhaGravar).then(function(){ pend--; });
+}
+function excluirVarios(tabela,ids){
+  if(!ids.length) return Promise.resolve();
+  pend++;
+  return rpc('app_excluir_varios',{p_codigo:codigo,p_tabela:tabela,p_ids:ids}).then(function(r){
+    if(!r.ok) throw {tipo:'erro',detalhe:r.erro};
+  }).catch(falhaGravar).then(function(){ pend--; });
+}
+function falhaGravar(e){
+  toast(e&&e.tipo==='rede' ? 'Sem conexão. A alteração não foi salva.' : 'Não foi possível salvar. Atualizando os dados…');
+  setTimeout(atualizar,800);
+}
+function upsert(t,obj){
+  var i=S[t].findIndex(function(x){ return x.id===obj.id; });
+  if(i>=0) S[t][i]=obj; else S[t].push(obj);
+}
+
+function atualizar(){
+  if(!logado||pend>0) return Promise.resolve();
+  return carregar().then(function(ok){ if(ok) renderAll(); }).catch(function(){
+    if(!avisouRede){ avisouRede=true; toast('Sem conexão. Tentando de novo…'); }
+  });
+}
+setInterval(function(){ if(!document.hidden) atualizar(); },15000);
+document.addEventListener('visibilitychange',function(){ if(!document.hidden) atualizar(); });
+
+/* ---------- Dados derivados ---------- */
+function projById(id){ return S.projetos.find(function(p){ return p.id===id; }); }
+function visProj(){ return S.projetos.filter(function(p){ return !p.hidden; }); }
+function itensDe(pid){ return S.itens.filter(function(i){ return i.projId===pid; }); }
+function itensVisiveis(){
+  var vis={}; visProj().forEach(function(p){ vis[p.id]=p; });
+  return S.itens.filter(function(i){ return vis[i.projId]; }).map(function(i){ return {it:i,p:vis[i.projId]}; });
+}
+function comprarLista(){ return itensVisiveis().filter(function(x){ return x.it.tipoComprar && x.it.statusComprar==='comprar'; }); }
+function alocLista(){
+  var out=[];
+  itensVisiveis().forEach(function(x){
+    if(x.it.tipoAloc && x.it.alocs) x.it.alocs.forEach(function(a){
+      var d=a.projId&&projById(a.projId); if(d) out.push({it:x.it,p:x.p,dest:d,qtd:a.qtd||x.it.qtd});
+    });
+  });
+  return out;
+}
+function naoLidas(){ return S.mensagens.filter(function(m){ return m.uid!==uid && (m.ts||'')>lido; }).length; }
+function projOptions(sel,primeiro){
+  return '<option value="">'+esc(primeiro)+'</option>'+S.projetos.filter(function(p){ return !p.hidden||p.id===sel; }).map(function(p){
+    return '<option value="'+esc(p.id)+'"'+(p.id===sel?' selected':'')+'>'+esc(p.nome)+'</option>';
+  }).join('');
+}
+
+/* ---------- Entrada (código e nome) ---------- */
+function gate(html){
+  $('app').hidden=true; $('gate').hidden=false;
+  $('gate').innerHTML='<div class="gate-card">'+html+'</div>';
+  var i=$('gate').querySelector('input'); if(i) i.focus();
+}
+function mostrarEntrar(msg){
+  gate('<h1>📦 Controle de Materiais</h1><p>Digite o código de acesso da equipe.</p>'+
+    '<form id="f-entrar"><label for="g-c">Código da equipe</label><input id="g-c" type="password" autocomplete="off" autocapitalize="off" required>'+
+    '<p class="erro" id="g-erro">'+esc(msg||'')+'</p><button class="btn pri" type="submit">Entrar</button></form>');
+}
+function mostrarDefinir(){
+  gate('<h1>📦 Controle de Materiais</h1><p>Primeiro acesso. Defina o <strong>código da equipe</strong>. Quem tiver o link e este código poderá ver e alterar os dados. Use pelo menos 8 caracteres e não use uma senha de outro lugar.</p>'+
+    '<form id="f-definir"><label for="g-c1">Código da equipe</label><input id="g-c1" type="password" autocomplete="off" autocapitalize="off" required>'+
+    '<div style="height:10px"></div><label for="g-c2">Repita o código</label><input id="g-c2" type="password" autocomplete="off" autocapitalize="off" required>'+
+    '<p class="erro" id="g-erro"></p><button class="btn pri" type="submit">Definir código</button></form>');
+}
+function mostrarNome(){
+  gate('<h1>Qual é o seu nome?</h1><p>Ele aparece nos recebimentos e nas mensagens, para a equipe saber quem fez cada coisa.</p>'+
+    '<form id="f-nome"><label for="g-n">Seu nome</label><input id="g-n" type="text" maxlength="40" autocomplete="given-name" required>'+
+    '<p class="erro" id="g-erro"></p><button class="btn pri" type="submit">Continuar</button></form>');
+}
+function mostrarRede(){
+  gate('<h1>📦 Controle de Materiais</h1><p>Não foi possível conectar. Confira a internet e tente de novo.</p><button class="btn pri" id="g-retry" type="button">Tentar de novo</button>');
+}
+function setErro(m){ var e=$('g-erro'); if(e) e.textContent=m; }
+function msgErro(e){
+  if(e==='bloqueado') return 'Muitas tentativas erradas. Aguarde 10 minutos e tente de novo.';
+  if(e==='invalido') return 'Código incorreto.';
+  if(e==='codigo_curto') return 'O código precisa ter pelo menos 4 caracteres.';
+  return 'Algo deu errado. Tente de novo.';
+}
+
+document.addEventListener('submit',function(ev){
+  var f=ev.target; if(!f||!f.id) return;
+  if(f.id==='f-entrar'){
+    ev.preventDefault();
+    var c=$('g-c').value.trim(); if(!c) return;
+    rpc('app_verificar',{p_codigo:c}).then(function(r){
+      if(r.ok){ codigo=c; lsSet('cm_codigo',c); depoisDoCodigo(); } else setErro(msgErro(r.erro));
+    },function(){ setErro('Sem conexão. Tente de novo.'); });
+  }
+  if(f.id==='f-definir'){
+    ev.preventDefault();
+    var a=$('g-c1').value.trim(), b=$('g-c2').value.trim();
+    if(a.length<6){ setErro('Use pelo menos 6 caracteres (o ideal é 8 ou mais).'); return; }
+    if(a!==b){ setErro('Os dois códigos não são iguais.'); return; }
+    rpc('app_definir_codigo',{p_novo:a,p_atual:null}).then(function(r){
+      if(r.ok){ codigo=a; lsSet('cm_codigo',a); depoisDoCodigo(); } else setErro(msgErro(r.erro));
+    },function(){ setErro('Sem conexão. Tente de novo.'); });
+  }
+  if(f.id==='f-nome'){
+    ev.preventDefault();
+    var n=$('g-n').value.trim(); if(!n) return;
+    nome=n.slice(0,40); lsSet('cm_nome',nome); iniciar();
+  }
+});
+document.addEventListener('click',function(ev){
+  if(ev.target&&ev.target.id==='g-retry') boot();
+});
+
+function depoisDoCodigo(){ if(!nome) mostrarNome(); else iniciar(); }
+
+function boot(){
+  rpc('app_status').then(function(st){
+    if(!st.codigo_definido){ mostrarDefinir(); return; }
+    if(!codigo){ mostrarEntrar(); return; }
+    return rpc('app_verificar',{p_codigo:codigo}).then(function(r){
+      if(r.ok) depoisDoCodigo();
+      else { codigo=''; lsDel('cm_codigo'); mostrarEntrar(r.erro==='bloqueado'?msgErro('bloqueado'):''); }
+    });
+  }).catch(mostrarRede);
+}
+
+function iniciar(){
+  $('gate').hidden=true; $('app').hidden=false;
+  $('btn-user').textContent='👤 '+nome;
+  carregar().then(function(ok){
+    if(!ok) return;
+    logado=true;
+    if(!lido){ lido=new Date().toISOString(); lsSet('cm_lido',lido); }
+    setTab(tab);
+  }).catch(function(){ mostrarRede(); });
+}
+
+/* ---------- Janelas ---------- */
+function abrir(html){
+  $('modal-box').innerHTML=html; $('modal').hidden=false; document.body.classList.add('noscroll');
+  var f=$('modal-box').querySelector('input:not([type=checkbox]),textarea'); if(f&&!/Mobi|Android/i.test(navigator.userAgent)) f.focus();
+}
+function fechar(){ $('modal').hidden=true; $('modal-box').innerHTML=''; document.body.classList.remove('noscroll'); }
+function confirmar(titulo,htmlTexto,botao,onOk){
+  confirmOk=onOk;
+  $('confirm-box').innerHTML='<div class="conf-ico">⚠️</div><h3>'+esc(titulo)+'</h3><p>'+htmlTexto+'</p><div class="conf-btns"><button class="btn" data-act="conf-no">Cancelar</button><button class="btn bad" data-act="conf-yes">'+esc(botao)+'</button></div>';
+  $('confirm').hidden=false;
+}
+function fecharConfirm(){ $('confirm').hidden=true; $('confirm-box').innerHTML=''; confirmOk=null; }
+$('modal').addEventListener('click',function(e){ if(e.target===$('modal')) fechar(); });
+$('confirm').addEventListener('click',function(e){ if(e.target===$('confirm')) fecharConfirm(); });
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){ if(!$('confirm').hidden) fecharConfirm(); else if(!$('modal').hidden) fechar(); }
+});
+
+/* ---------- Abas e atualização da tela ---------- */
+var TABS=[['mat','📋','Materiais'],['proj','📁','Projetos'],['est','🏭','Estoque'],['compras','🛒','Compras'],['avisos','🔔','Avisos'],['msg','💬','Mensagens']];
+function setTab(t){
+  tab=t;
+  document.querySelectorAll('.page').forEach(function(p){ p.hidden=(p.id!=='page-'+t); });
+  if(t==='msg') marcarLido();
+  renderAll();
+}
+function marcarLido(){
+  var mx=lido;
+  S.mensagens.forEach(function(m){ if((m.ts||'')>mx) mx=m.ts; });
+  if(mx!==lido){ lido=mx; lsSet('cm_lido',lido); }
+}
+function renderTabs(){
+  $('tabs').innerHTML=TABS.map(function(x){
+    var b='';
+    if(x[0]==='avisos'){ var c=comprarLista().length+alocLista().length; if(c) b='<span class="notif">'+c+'</span>'; }
+    if(x[0]==='msg'){ var m=naoLidas(); if(m) b='<span class="notif">'+m+'</span>'; }
+    return '<button class="tab'+(tab===x[0]?' on':'')+'" data-act="tab" data-t="'+x[0]+'">'+x[1]+' '+x[2]+b+'</button>';
+  }).join('');
+}
+function renderStats(){
+  var pend_=0,rec=0,comprar=0;
+  itensVisiveis().forEach(function(x){
+    if(x.it.status==='rec') rec++; else pend_++;
+    if(x.it.tipoComprar&&x.it.statusComprar==='comprar') comprar++;
+  });
+  var livres=S.estoque.filter(function(e){ return !e.projId; }).length;
+  function st(n,l,cor){ return '<div class="stat"><b'+(cor?' style="color:'+cor+'"':'')+'>'+n+'</b><span>'+l+'</span></div>'; }
+  $('stats').innerHTML=st(visProj().length,'projetos')+st(pend_,'pendentes','var(--warn-fg)')+st(rec,'recebidos','var(--ok-fg)')+st(livres,'livres no estoque','var(--ok-fg)')+st(comprar,'para comprar','var(--bad-fg)');
+}
+function fillSelect(id,primeiro){
+  var s=$(id); if(!s) return;
+  var v=s.value;
+  s.innerHTML=projOptions(v,primeiro);
+  if(v && !S.projetos.some(function(p){ return p.id===v; })) s.value='';
+}
+function renderAll(){
+  if(!logado) return;
+  if(tab==='msg') marcarLido();
+  renderTabs(); renderStats();
+  fillSelect('f-mat-proj','Todos os projetos'); fillSelect('f-est-proj','Todos os projetos'); fillSelect('f-cp-proj','Todos os projetos');
+  if(tab==='mat') rMat();
+  if(tab==='proj') rProj();
+  if(tab==='est') rEst();
+  if(tab==='compras') rCompras();
+  if(tab==='avisos') rAvisos();
+  if(tab==='msg') rMsg();
+}
+['f-mat-q','f-mat-proj','f-mat-st'].forEach(function(id){ $(id).addEventListener('input',rMat); });
+['f-proj-q','f-proj-ocultos'].forEach(function(id){ $(id).addEventListener('input',rProj); });
+['f-est-q','f-est-proj','f-est-st'].forEach(function(id){ $(id).addEventListener('input',rEst); });
+['f-cp-q','f-cp-proj','f-cp-st'].forEach(function(id){ $(id).addEventListener('input',rCompras); });
+
+/* ---------- Peças de tela ---------- */
+function badges(it,q){
+  var b='';
+  if(it.tipoForn&&it.forn) b+='<span class="badge b-info">🏪 '+hl(it.forn,q)+'</span>';
+  if(it.tipoComprar) b+= it.statusComprar==='comprado' ? '<span class="badge b-ok">✓ Comprado</span>' : '<span class="badge b-bad">🛒 Falta comprar</span>';
+  if(it.tipoAloc&&it.alocs){
+    var n=it.alocs.map(function(a){ var p=a.projId&&projById(a.projId); return p?p.nome:null; }).filter(Boolean);
+    if(n.length) b+='<span class="badge b-loc">⇄ '+esc(n.join(', '))+'</span>';
+  }
+  return b;
+}
+function vazio(ic,txt){ return '<div class="empty"><div style="font-size:28px;margin-bottom:6px">'+ic+'</div>'+txt+'</div>'; }
+
+function itemHTML(it,p,q,mostrarProj){
+  var rec=it.status==='rec';
+  return '<article class="item'+(rec?' is-rec':'')+'"><div class="item-main">'+
+    '<div class="item-nome">'+hl(it.nome,q)+'</div>'+
+    '<div class="meta">'+(mostrarProj?'<span class="chip">📁 '+esc(p.nome)+'</span>':'')+'<span>Qtd: '+esc(it.qtd||'—')+'</span>'+badges(it,q)+'</div>'+
+    (it.obs?'<div class="obs">💬 '+esc(it.obs)+'</div>':'')+
+    (rec?'<div class="recinfo">✓ Recebido em <strong>'+fmt(it.dataRec)+'</strong>'+(it.recPor?' por '+esc(it.recPor):'')+
+      (it.qtdRec&&it.qtdRec!==it.qtd?' · chegou: '+esc(it.qtdRec):'')+(it.obsRec?' · '+esc(it.obsRec):'')+
+      ' <button class="link" data-act="detalhe" data-i="'+esc(it.id)+'">detalhes</button></div>':'')+
+    '</div><div class="item-act">'+
+    '<button class="btn sm" data-act="edit-item" data-i="'+esc(it.id)+'">Editar</button>'+
+    '<button class="chegou'+(rec?' on':'')+'" data-act="chegou" data-i="'+esc(it.id)+'" title="'+(rec?'Toque de novo para desfazer':'Marcar como recebido')+'">'+(rec?'✓ Recebido':'Chegou')+'</button>'+
+    '</div></article>';
+}
+
+/* ---------- Materiais ---------- */
+function rMat(){
+  var q=val('f-mat-q').toLowerCase(), fp=$('f-mat-proj').value, fs=$('f-mat-st').value;
+  var rows=itensVisiveis().filter(function(x){
+    if(fp&&x.p.id!==fp) return false;
+    if(fs&&x.it.status!==fs) return false;
+    if(q&&x.it.nome.toLowerCase().indexOf(q)<0&&(x.it.forn||'').toLowerCase().indexOf(q)<0) return false;
+    return true;
+  });
+  if(fs==='rec') rows.sort(function(a,b){ return (b.it.dataRec||'').localeCompare(a.it.dataRec||''); });
+  $('list-mat').innerHTML=rows.length?rows.map(function(x){ return itemHTML(x.it,x.p,q,true); }).join(''):vazio('📭','Nenhum material encontrado.');
+}
+
+/* ---------- Projetos ---------- */
+function rProj(){
+  var q=val('f-proj-q').toLowerCase(), ver=$('f-proj-ocultos').checked;
+  var lista=S.projetos.filter(function(p){
+    if(!ver&&p.hidden) return false;
+    if(q&&p.nome.toLowerCase().indexOf(q)<0&&(p.desc||'').toLowerCase().indexOf(q)<0) return false;
+    return true;
+  });
+  if(!lista.length){ $('list-proj').innerHTML=vazio('📁','Nenhum projeto. Crie o primeiro em <strong>+ Novo projeto</strong>.'); return; }
+  $('list-proj').innerHTML=lista.map(function(p){
+    var its=itensDe(p.id), rec=its.filter(function(i){ return i.status==='rec'; }).length, tot=its.length, ab=!!abertos[p.id];
+    var forn=[]; its.forEach(function(i){ if(i.tipoForn&&i.forn&&forn.indexOf(i.forn)<0) forn.push(i.forn); });
+    return '<div class="proj'+(p.hidden?' oculto':'')+'"><div class="proj-h">'+
+      '<button class="proj-toggle" data-act="toggle-proj" data-p="'+esc(p.id)+'" aria-expanded="'+ab+'"><span>'+(ab?'📂':'📁')+'</span><b>'+esc(p.nome)+'</b>'+
+      (p.desc?'<span class="chip">'+esc(p.desc)+'</span>':'')+(p.hidden?'<span class="badge b-mute">oculto</span>':'')+'</button>'+
+      '<span class="badge '+(tot>0&&rec===tot?'b-ok':rec>0?'b-info':'b-warn')+'">'+rec+'/'+tot+'</span>'+
+      '<button class="btn sm" data-act="add-itens" data-p="'+esc(p.id)+'">+ Itens</button>'+
+      '<button class="btn sm" data-act="hide-proj" data-p="'+esc(p.id)+'">'+(p.hidden?'Mostrar':'Ocultar')+'</button>'+
+      '<button class="btn sm" data-act="edit-proj" data-p="'+esc(p.id)+'">Editar</button></div>'+
+      (ab?'<div class="proj-b">'+(forn.length?'<div class="hint">🏪 '+esc(forn.join(' · '))+'</div>':'')+
+        (tot?its.map(function(i){ return itemHTML(i,p,'',false); }).join(''):'<div class="hint" style="padding:8px 0">Nenhum item ainda. Use <strong>+ Itens</strong>.</div>')+'</div>':'')+
+      '</div>';
+  }).join('');
+}
+
+/* ---------- Estoque ---------- */
+function estRows(){
+  var rows=[];
+  S.estoque.forEach(function(e){ rows.push({tipo:'est',sit:e.projId?'dest':'livre',nome:e.nome,qtd:e.qtd,forn:e.forn,obs:e.obs,projId:e.projId||'',e:e}); });
+  itensVisiveis().forEach(function(x){
+    if(x.it.status==='rec') rows.push({tipo:'proj',sit:'dest',nome:x.it.nome,qtd:x.it.qtdRec||x.it.qtd,forn:x.it.forn,obs:x.it.obs,projId:x.p.id,it:x.it,data:x.it.dataRec});
+    if(x.it.tipoComprar&&x.it.statusComprar==='comprar') rows.push({tipo:'comprar',sit:'comprar',nome:x.it.nome,qtd:x.it.qtdComprar||x.it.qtd,forn:x.it.forn,obs:x.it.obs,projId:x.p.id,it:x.it});
+  });
+  return rows;
+}
+function rEst(){
+  var all=estRows(), em=all.filter(function(r){ return r.sit!=='comprar'; });
+  $('en-todos').textContent=em.length;
+  $('en-livre').textContent=em.filter(function(r){ return r.sit==='livre'; }).length;
+  $('en-dest').textContent=em.filter(function(r){ return r.sit==='dest'; }).length;
+  var fs=$('f-est-st').value;
+  $('ec-todos').classList.toggle('sel',fs===''||fs==='comprar');
+  $('ec-livre').classList.toggle('sel',fs==='livre');
+  $('ec-dest').classList.toggle('sel',fs==='dest');
+  var q=val('f-est-q').toLowerCase(), fp=$('f-est-proj').value;
+  var rows=all.filter(function(r){
+    if(fs===''){ if(r.sit==='comprar') return false; } else if(r.sit!==fs) return false;
+    if(fp&&r.projId!==fp) return false;
+    if(q&&r.nome.toLowerCase().indexOf(q)<0&&(r.forn||'').toLowerCase().indexOf(q)<0) return false;
+    return true;
+  });
+  if(!rows.length){ $('list-est').innerHTML=vazio('🏭','Nada encontrado aqui.<br>Use <strong>+ Adicionar ao estoque</strong> para cadastrar o que já está guardado.'); return; }
+  $('list-est').innerHTML=rows.map(function(r){
+    var proj=r.projId&&projById(r.projId);
+    var sel=r.sit==='livre'?'<span class="badge b-ok">● Livre</span>':r.sit==='dest'?'<span class="badge b-warn">🔒 Destinado</span>':'<span class="badge b-bad">🛒 Falta comprar</span>';
+    var acoes=r.tipo==='est'
+      ? '<button class="btn sm" data-act="edit-est" data-i="'+esc(r.e.id)+'">Editar</button>'+(r.e.projId?'<button class="btn sm" data-act="liberar-est" data-i="'+esc(r.e.id)+'">Liberar</button>':'')
+      : '<button class="btn sm" data-act="edit-item" data-i="'+esc(r.it.id)+'">Editar</button>';
+    return '<article class="item est-'+r.sit+'"><div class="item-main"><div class="item-nome">'+hl(r.nome,q)+'</div>'+
+      '<div class="meta">'+sel+(proj?'<span class="chip">📁 '+esc(proj.nome)+'</span>':'')+'<span>Qtd: '+esc(r.qtd||'—')+'</span>'+
+      (r.forn?'<span class="chip">🏪 '+hl(r.forn,q)+'</span>':'')+
+      (r.tipo==='proj'?'<span class="chip">veio do projeto</span>':r.tipo==='est'?'<span class="chip">estoque</span>':'')+'</div>'+
+      (r.obs?'<div class="obs">💬 '+esc(r.obs)+'</div>':'')+
+      (r.tipo==='proj'?'<div class="recinfo">Chegou em '+fmt(r.data)+'</div>':'')+
+      '</div><div class="item-act">'+acoes+'</div></article>';
+  }).join('');
+}
+
+/* ---------- Compras ---------- */
+function rCompras(){
+  var q=val('f-cp-q').toLowerCase(), fp=$('f-cp-proj').value, fs=$('f-cp-st').value;
+  var rows=itensVisiveis().filter(function(x){
+    if(!x.it.tipoComprar) return false;
+    if(fp&&x.p.id!==fp) return false;
+    if(fs&&x.it.statusComprar!==fs) return false;
+    if(q&&x.it.nome.toLowerCase().indexOf(q)<0&&x.p.nome.toLowerCase().indexOf(q)<0&&(x.it.forn||'').toLowerCase().indexOf(q)<0) return false;
+    return true;
+  });
+  if(!rows.length){ $('list-compras').innerHTML=vazio('🛒','Nada para comprar por aqui.'); return; }
+  var g={}; rows.forEach(function(x){ var k=(x.it.tipoForn&&x.it.forn)?x.it.forn:'Sem fornecedor'; (g[k]=g[k]||[]).push(x); });
+  $('list-compras').innerHTML=Object.keys(g).map(function(k){
+    return '<div class="grp"><div class="grp-t">🏪 '+esc(k)+' ('+g[k].length+')</div>'+g[k].map(function(x){
+      var ok=x.it.statusComprar==='comprado';
+      return '<article class="item'+(ok?' is-rec':'')+'"><div class="item-main"><div class="item-nome">'+esc(x.it.nome)+'</div>'+
+        '<div class="meta"><span class="chip">📁 '+esc(x.p.nome)+'</span><span>Qtd: '+esc(x.it.qtdComprar||x.it.qtd)+'</span>'+
+        '<span class="badge '+(ok?'b-ok':'b-bad')+'">'+(ok?'✓ Comprado':'Falta comprar')+'</span></div></div>'+
+        '<div class="item-act">'+(ok?'':'<button class="btn ok sm" data-act="comprado" data-i="'+esc(x.it.id)+'">✓ Comprado</button>')+'</div></article>';
+    }).join('')+'</div>';
+  }).join('');
+}
+
+/* ---------- Avisos ---------- */
+function rAvisos(){
+  var html='', cl=comprarLista(), al=alocLista();
+  if(cl.length){
+    var g={}; cl.forEach(function(x){ var k=(x.it.tipoForn&&x.it.forn)?x.it.forn:'Sem fornecedor'; (g[k]=g[k]||[]).push(x); });
+    html+='<div class="grp"><div class="grp-t">🛒 Falta comprar ('+cl.length+')</div>'+Object.keys(g).map(function(k){
+      return '<div class="aviso comprar"><strong>🏪 '+esc(k)+'</strong>'+g[k].map(function(x){
+        return '<div class="aviso-l"><span class="nome">'+esc(x.it.nome)+'</span><span class="chip">📁 '+esc(x.p.nome)+'</span><span class="chip">'+esc(x.it.qtdComprar||x.it.qtd)+'</span>'+
+          '<button class="btn ok sm" data-act="comprado" data-i="'+esc(x.it.id)+'">✓ Comprado</button></div>';
+      }).join('')+'</div>';
+    }).join('')+'</div>';
+  }
+  if(al.length){
+    html+='<div class="grp"><div class="grp-t">⇄ Alocados em outros projetos ('+al.length+')</div>'+al.map(function(x){
+      return '<div class="aviso aloc"><strong>'+esc(x.it.nome)+'</strong><div class="meta" style="margin-top:6px"><span class="chip">📁 Origem: '+esc(x.p.nome)+'</span><span>→</span><span class="badge b-loc">📁 '+esc(x.dest.nome)+'</span><span>Qtd: '+esc(x.qtd)+'</span></div></div>';
+    }).join('')+'</div>';
+  }
+  $('list-avisos').innerHTML=html||vazio('✅','Nenhum aviso no momento.');
+}
+
+/* ---------- Mensagens ---------- */
+function rMsg(){
+  var l=S.mensagens.slice().sort(function(a,b){ return (b.ts||'').localeCompare(a.ts||''); }).slice(0,200);
+  $('list-msg').innerHTML=l.length?l.map(function(m){
+    var meu=m.uid===uid;
+    return '<article class="msg'+(meu?' mine':'')+'"><div class="msg-h"><strong>'+esc(m.autor||'?')+'</strong><span>'+fmt(m.ts)+'</span>'+
+      (meu?'<button class="link" data-act="msg-del" data-i="'+esc(m.id)+'">apagar</button>':'')+'</div><div class="msg-t">'+esc(m.texto)+'</div></article>';
+  }).join(''):vazio('💬','Nenhuma mensagem ainda. Escreva a primeira acima.');
+}
+function enviarMsg(){
+  var t=$('msg-txt').value.trim(); if(!t) return;
+  var m={id:newId(),autor:nome,uid:uid,texto:t.slice(0,2000),ts:new Date().toISOString()};
+  S.mensagens.push(m); gravar('mensagens',m);
+  $('msg-txt').value=''; marcarLido(); renderAll();
+}
+
+/* ---------- Construtor de listas (campos ou colar) ---------- */
+function lbRow(){
+  return '<div class="lb-row"><div><label>Nome</label><input class="lb-n" placeholder="Nome do material"></div>'+
+    '<div><label>Quantidade</label><input class="lb-q" placeholder="Ex.: 5 un"></div>'+
+    '<div><label>Fornecedor</label><input class="lb-f" placeholder="Fornecedor"></div>'+
+    '<button type="button" class="btn sm ghost-bad" data-act="lb-rm" aria-label="Remover linha">✕</button></div>';
+}
+function lbHTML(){
+  return '<div class="seg"><button type="button" class="seg-b on" data-act="lb-modo" data-m="campos">Campos separados</button><button type="button" class="seg-b" data-act="lb-modo" data-m="cola">Colar lista</button></div>'+
+    '<div id="lb-campos"><div id="lb-rows">'+lbRow()+'</div><button type="button" class="btn sm" data-act="lb-add">+ Linha</button></div>'+
+    '<div id="lb-cola" hidden><div class="hint">Um item por linha, separado por <b>|</b>:<br><code>Nome | Quantidade | Fornecedor</code></div>'+
+    '<textarea id="lb-txt" rows="7" placeholder="DPS Clamper 275V 40kA | 3 un | Elétrica SP&#10;Disjuntor 20A | 10 un | Elétrica SP"></textarea></div>';
+}
+function lbColetar(){
+  var out=[];
+  if($('lb-cola').hidden){
+    document.querySelectorAll('#lb-rows .lb-row').forEach(function(r){
+      var n=r.querySelector('.lb-n').value.trim(); if(!n) return;
+      out.push({nome:n,qtd:r.querySelector('.lb-q').value.trim()||'—',forn:r.querySelector('.lb-f').value.trim()});
+    });
+  } else {
+    $('lb-txt').value.split('\n').forEach(function(l){
+      l=l.trim(); if(l.length<2) return;
+      var p=l.split('|').map(function(s){ return s.trim(); });
+      out.push({nome:p[0]||l,qtd:p[1]||'—',forn:p[2]||''});
+    });
+  }
+  return out;
+}
+function mkItem(projId,d){
+  return {id:newId(),ord:ord(),projId:projId,nome:d.nome,qtd:d.qtd||'—',forn:d.forn||'',obs:'',status:'pend',dataRec:null,qtdRec:null,obsRec:'',recPor:'',
+    tipoForn:!!d.forn,tipoComprar:false,statusComprar:'comprar',qtdComprar:'',tipoAloc:false,alocs:[]};
+}
+
+/* ---------- Ações ---------- */
+var A={};
+
+A.tab=function(el){ setTab(el.dataset.t); };
+A['conf-no']=fecharConfirm;
+A['conf-yes']=function(){ var f=confirmOk; fecharConfirm(); if(f) f(); };
+A.close=fechar;
+
+/* recebimento */
+A.chegou=function(el){
+  var it=S.itens.find(function(x){ return x.id===el.dataset.i; }); if(!it) return;
+  if(it.status!=='rec'){
+    it.status='rec'; it.dataRec=new Date().toISOString(); it.qtdRec=it.qtd; it.obsRec=''; it.recPor=nome;
+    toast('✓ Recebido: '+it.nome);
+  } else {
+    it.status='pend'; it.dataRec=null; it.qtdRec=null; it.obsRec=''; it.recPor='';
+    toast('Recebimento desfeito');
+  }
+  gravar('itens',it); renderAll();
+};
+A.detalhe=function(el){
+  var it=S.itens.find(function(x){ return x.id===el.dataset.i; }); if(!it) return;
+  var p=projById(it.projId)||{nome:'—'};
+  abrir('<div class="mt"><h3>Detalhes do recebimento</h3><button class="x" data-act="close" aria-label="Fechar">✕</button></div>'+
+    '<div class="hint"><strong>'+esc(it.nome)+'</strong><br>Projeto: '+esc(p.nome)+' · Pedido: '+esc(it.qtd)+'<br>Recebido em '+fmt(it.dataRec)+(it.recPor?' por '+esc(it.recPor):'')+'</div>'+
+    '<div class="field"><label for="dr-q">Quantidade que chegou</label><input id="dr-q" value="'+esc(it.qtdRec||it.qtd)+'"></div>'+
+    '<div class="field"><label for="dr-o">Observação (faltou peça, embalagem danificada…)</label><textarea id="dr-o">'+esc(it.obsRec||'')+'</textarea></div>'+
+    '<div class="acts"><button class="btn ghost-bad" data-act="dr-desfazer" data-i="'+esc(it.id)+'">Desfazer recebimento</button><span class="sp"></span><button class="btn pri" data-act="dr-salvar" data-i="'+esc(it.id)+'">Salvar</button></div>');
+};
+A['dr-salvar']=function(el){
+  var it=S.itens.find(function(x){ return x.id===el.dataset.i; }); if(!it) return;
+  it.qtdRec=val('dr-q')||it.qtd; it.obsRec=val('dr-o');
+  gravar('itens',it); fechar(); renderAll(); toast('Detalhes salvos');
+};
+A['dr-desfazer']=function(el){ fechar(); A.chegou(el); };
+
+/* itens */
+function itemModal(it){
+  var p=projById(it.projId)||{nome:'—'};
+  var alocs=(it.alocs||[]).map(function(a){ return alocRow(it.projId,a); }).join('');
+  abrir('<div class="mt"><h3>Editar item</h3><button class="x" data-act="close" aria-label="Fechar">✕</button></div>'+
+    '<div class="hint">Projeto: '+esc(p.nome)+'</div>'+
+    '<div class="field"><label for="ei-n">Nome *</label><input id="ei-n" value="'+esc(it.nome)+'"></div>'+
+    '<div class="field"><label for="ei-q">Quantidade</label><input id="ei-q" value="'+esc(it.qtd==='—'?'':it.qtd)+'" placeholder="Ex.: 10 un, 50 m"></div>'+
+    '<div class="field"><label for="ei-o">Observação</label><textarea id="ei-o" placeholder="Algo errado? Escreva aqui.">'+esc(it.obs||'')+'</textarea></div>'+
+    '<div class="sect">Tipo do item (pode combinar)</div><div class="tchips">'+
+      '<button type="button" class="tchip'+(it.tipoForn?' on':'')+'" data-t="forn" data-act="chip">🏪 Fornecedor</button>'+
+      '<button type="button" class="tchip'+(it.tipoComprar?' on':'')+'" data-t="comprar" data-act="chip">🛒 Falta comprar</button>'+
+      '<button type="button" class="tchip'+(it.tipoAloc?' on':'')+'" data-t="aloc" data-act="chip">⇄ Alocado</button></div>'+
+    '<div id="x-forn"'+(it.tipoForn?'':' hidden')+'><div class="field"><label for="ei-f">Nome do fornecedor</label><input id="ei-f" value="'+esc(it.forn||'')+'" placeholder="Ex.: Elétrica SP"></div></div>'+
+    '<div id="x-comprar"'+(it.tipoComprar?'':' hidden')+'><div class="row2"><div class="field"><label for="ei-qc">Quantidade a comprar</label><input id="ei-qc" value="'+esc(it.qtdComprar||'')+'" placeholder="Ex.: 5 un"></div>'+
+      '<div class="field"><label for="ei-sc">Situação da compra</label><select id="ei-sc" style="width:100%"><option value="comprar"'+(it.statusComprar!=='comprado'?' selected':'')+'>Precisa comprar</option><option value="comprado"'+(it.statusComprar==='comprado'?' selected':'')+'>Já comprado</option></select></div></div></div>'+
+    '<div id="x-aloc"'+(it.tipoAloc?'':' hidden')+'><div class="hint">Use quando este material também será usado em outro projeto.</div><div id="al-rows">'+alocs+'</div><button type="button" class="btn sm" data-act="al-add" data-p="'+esc(it.projId)+'">+ Alocar em outro projeto</button></div>'+
+    '<div class="acts"><button class="btn ghost-bad" data-act="del-item" data-i="'+esc(it.id)+'">Excluir item</button><span class="sp"></span><button class="btn" data-act="close">Cancelar</button><button class="btn pri" data-act="save-item" data-i="'+esc(it.id)+'">Salvar</button></div>');
+}
+function alocRow(projAtual,a){
+  var opts='<option value="">— projeto —</option>'+S.projetos.filter(function(p){ return p.id!==projAtual; }).map(function(p){
+    return '<option value="'+esc(p.id)+'"'+(a&&a.projId===p.id?' selected':'')+'>'+esc(p.nome)+'</option>';
+  }).join('');
+  return '<div class="al-row"><div style="flex:1"><label>Projeto</label><select class="al-p">'+opts+'</select></div>'+
+    '<div><label>Qtd</label><input class="al-q" value="'+esc(a?a.qtd:'')+'" placeholder="2 un"></div>'+
+    '<button type="button" class="btn sm" data-act="al-rm" aria-label="Remover">✕</button></div>';
+}
+A['edit-item']=function(el){ var it=S.itens.find(function(x){ return x.id===el.dataset.i; }); if(it) itemModal(it); };
+A.chip=function(el){ el.classList.toggle('on'); var b=$('x-'+el.dataset.t); if(b) b.hidden=!el.classList.contains('on'); };
+A['al-add']=function(el){ $('al-rows').insertAdjacentHTML('beforeend',alocRow(el.dataset.p,null)); };
+A['al-rm']=function(el){ var r=el.closest('.al-row'); if(r) r.remove(); };
+A['save-item']=function(el){
+  var it=S.itens.find(function(x){ return x.id===el.dataset.i; }); if(!it) return;
+  var n=val('ei-n'); if(!n){ toast('O nome é obrigatório'); return; }
+  function on(t){ return $('modal-box').querySelector('.tchip[data-t="'+t+'"]').classList.contains('on'); }
+  it.nome=n; it.qtd=val('ei-q')||'—'; it.obs=val('ei-o');
+  it.tipoForn=on('forn'); it.forn=it.tipoForn?val('ei-f'):'';
+  it.tipoComprar=on('comprar'); it.qtdComprar=it.tipoComprar?val('ei-qc'):''; it.statusComprar=it.tipoComprar?$('ei-sc').value:'comprar';
+  it.tipoAloc=on('aloc');
+  it.alocs=[].map.call(document.querySelectorAll('#al-rows .al-row'),function(r){ return {projId:r.querySelector('.al-p').value,qtd:r.querySelector('.al-q').value.trim()}; }).filter(function(a){ return a.projId; });
+  gravar('itens',it); fechar(); renderAll(); toast('Item atualizado');
+};
+A['del-item']=function(el){
+  var it=S.itens.find(function(x){ return x.id===el.dataset.i; }); if(!it) return;
+  confirmar('Excluir item?','Excluir <strong>“'+esc(it.nome)+'”</strong>? Essa ação não pode ser desfeita.','Sim, excluir',function(){
+    S.itens=S.itens.filter(function(x){ return x.id!==it.id; });
+    excluirVarios('itens',[it.id]); fechar(); renderAll(); toast('Item excluído');
+  });
+};
+A.comprado=function(el){
+  var it=S.itens.find(function(x){ return x.id===el.dataset.i; }); if(!it) return;
+  it.statusComprar='comprado'; gravar('itens',it); renderAll(); toast('Marcado como comprado');
+};
+
+/* lista (campos/colar) */
+A['lb-modo']=function(el){
+  var m=el.dataset.m;
+  document.querySelectorAll('.seg-b').forEach(function(b){ b.classList.toggle('on',b===el); });
+  $('lb-campos').hidden=(m!=='campos'); $('lb-cola').hidden=(m!=='cola');
+};
+A['lb-add']=function(){ $('lb-rows').insertAdjacentHTML('beforeend',lbRow()); };
+A['lb-rm']=function(el){ var r=el.closest('.lb-row'); if(r&&document.querySelectorAll('#lb-rows .lb-row').length>1) r.remove(); else if(r) r.querySelectorAll('input').forEach(function(i){ i.value=''; }); };
+
+/* projetos */
+A['toggle-proj']=function(el){ var id=el.dataset.p; abertos[id]=!abertos[id]; rProj(); };
+A['hide-proj']=function(el){
+  var p=projById(el.dataset.p); if(!p) return;
+  p.hidden=!p.hidden; gravar('projetos',p); renderAll(); toast(p.hidden?'Projeto oculto':'Projeto visível');
+};
+A['novo-proj']=function(){
+  abrir('<div class="mt"><h3>Novo projeto</h3><button class="x" data-act="close" aria-label="Fechar">✕</button></div>'+
+    '<div class="field"><label for="np-n">Nome *</label><input id="np-n" placeholder="Ex.: Obra Bloco A"></div>'+
+    '<div class="field"><label for="np-d">Descrição (opcional)</label><input id="np-d"></div>'+
+    '<div class="sect">Lista de materiais</div>'+lbHTML()+
+    '<div class="acts"><button class="btn" data-act="close">Cancelar</button><button class="btn pri" data-act="save-proj">Salvar projeto</button></div>');
+};
+A['save-proj']=function(){
+  var n=val('np-n'); if(!n){ toast('Informe o nome do projeto'); return; }
+  var p={id:newId(),nome:n,desc:val('np-d'),hidden:false};
+  var itens=lbColetar().map(function(d){ return mkItem(p.id,d); });
+  S.projetos.push(p); itens.forEach(function(i){ S.itens.push(i); });
+  gravar('projetos',p).then(function(){ return gravarVarios('itens',itens); });
+  abertos[p.id]=true; fechar(); renderAll(); toast('Projeto criado');
+};
+A['add-itens']=function(el){
+  var p=projById(el.dataset.p); if(!p) return;
+  abrir('<div class="mt"><h3>Adicionar itens — '+esc(p.nome)+'</h3><button class="x" data-act="close" aria-label="Fechar">✕</button></div>'+lbHTML()+
+    '<div class="acts"><button class="btn" data-act="close">Cancelar</button><button class="btn pri" data-act="save-itens" data-p="'+esc(p.id)+'">Adicionar</button></div>');
+};
+A['save-itens']=function(el){
+  var p=projById(el.dataset.p); if(!p) return;
+  var itens=lbColetar().map(function(d){ return mkItem(p.id,d); });
+  if(!itens.length){ toast('Nenhum item preenchido'); return; }
+  itens.forEach(function(i){ S.itens.push(i); });
+  gravarVarios('itens',itens); abertos[p.id]=true; fechar(); renderAll(); toast(itens.length+' item(ns) adicionado(s)');
+};
+A['edit-proj']=function(el){
+  var p=projById(el.dataset.p); if(!p) return;
+  abrir('<div class="mt"><h3>Editar projeto</h3><button class="x" data-act="close" aria-label="Fechar">✕</button></div>'+
+    '<div class="field"><label for="ep-n">Nome *</label><input id="ep-n" value="'+esc(p.nome)+'"></div>'+
+    '<div class="field"><label for="ep-d">Descrição</label><input id="ep-d" value="'+esc(p.desc||'')+'"></div>'+
+    '<div class="acts"><button class="btn ghost-bad" data-act="del-proj" data-p="'+esc(p.id)+'">Excluir projeto</button><span class="sp"></span><button class="btn" data-act="close">Cancelar</button><button class="btn pri" data-act="save-edit-proj" data-p="'+esc(p.id)+'">Salvar</button></div>');
+};
+A['save-edit-proj']=function(el){
+  var p=projById(el.dataset.p); if(!p) return;
+  var n=val('ep-n'); if(!n){ toast('O nome é obrigatório'); return; }
+  p.nome=n; p.desc=val('ep-d'); gravar('projetos',p); fechar(); renderAll(); toast('Projeto atualizado');
+};
+A['del-proj']=function(el){
+  var p=projById(el.dataset.p); if(!p) return;
+  var its=itensDe(p.id), nEst=S.estoque.filter(function(e){ return e.projId===p.id; }).length;
+  var txt='Isso vai apagar o projeto <strong>“'+esc(p.nome)+'”</strong> e todos os <strong>'+its.length+(its.length===1?' item':' itens')+'</strong> dentro dele. Essa ação <strong>não pode ser desfeita</strong>.';
+  if(nEst) txt+='<br><br>Os '+nEst+' item(ns) de estoque destinados a este projeto não serão apagados: ficam livres.';
+  confirmar('Excluir projeto?',txt,'Sim, excluir tudo',function(){
+    var libera=[]; S.estoque.forEach(function(e){ if(e.projId===p.id){ e.projId=''; libera.push(e); } });
+    var mudou=[]; S.itens.forEach(function(i){
+      if(i.projId!==p.id&&i.alocs&&i.alocs.some(function(a){ return a.projId===p.id; })){ i.alocs=i.alocs.filter(function(a){ return a.projId!==p.id; }); mudou.push(i); }
+    });
+    var ids=its.map(function(i){ return i.id; });
+    S.itens=S.itens.filter(function(i){ return i.projId!==p.id; });
+    S.projetos=S.projetos.filter(function(x){ return x.id!==p.id; });
+    excluirVarios('itens',ids).then(function(){ return excluirVarios('projetos',[p.id]); })
+      .then(function(){ return gravarVarios('estoque',libera); }).then(function(){ return gravarVarios('itens',mudou); });
+    fechar(); renderAll(); toast('Projeto excluído');
+  });
+};
+
+/* estoque */
+A['est-card']=function(el){ $('f-est-st').value=el.dataset.v; rEst(); };
+A['novo-est']=function(){
+  abrir('<div class="mt"><h3>Adicionar ao estoque</h3><button class="x" data-act="close" aria-label="Fechar">✕</button></div>'+
+    '<div class="field"><label for="ne-d">Destino</label><select id="ne-d" style="width:100%">'+projOptions('','Livre (sem projeto)')+'</select><div class="hint" style="margin-top:4px">Vale para todos os itens adicionados agora. Dá para mudar depois, item por item.</div></div>'+lbHTML()+
+    '<div class="acts"><button class="btn" data-act="close">Cancelar</button><button class="btn pri" data-act="save-novo-est">Adicionar ao estoque</button></div>');
+};
+A['save-novo-est']=function(){
+  var dest=$('ne-d').value;
+  var novos=lbColetar().map(function(d){ return {id:newId(),ord:ord(),nome:d.nome,qtd:d.qtd,forn:d.forn,obs:'',projId:dest}; });
+  if(!novos.length){ toast('Nenhum item preenchido'); return; }
+  novos.forEach(function(e){ S.estoque.push(e); });
+  gravarVarios('estoque',novos); fechar(); renderAll(); toast(novos.length+' item(ns) no estoque');
+};
+A['edit-est']=function(el){
+  var e=S.estoque.find(function(x){ return x.id===el.dataset.i; }); if(!e) return;
+  abrir('<div class="mt"><h3>Editar item do estoque</h3><button class="x" data-act="close" aria-label="Fechar">✕</button></div>'+
+    '<div class="field"><label for="ee-n">Nome *</label><input id="ee-n" value="'+esc(e.nome)+'"></div>'+
+    '<div class="row2"><div class="field"><label for="ee-q">Quantidade</label><input id="ee-q" value="'+esc(e.qtd==='—'?'':e.qtd)+'"></div>'+
+    '<div class="field"><label for="ee-f">Fornecedor</label><input id="ee-f" value="'+esc(e.forn||'')+'"></div></div>'+
+    '<div class="field"><label for="ee-d">Destino</label><select id="ee-d" style="width:100%">'+projOptions(e.projId||'','Livre (sem projeto)')+'</select></div>'+
+    '<div class="field"><label for="ee-o">Observação</label><textarea id="ee-o" placeholder="Ex.: prateleira B, estado do material…">'+esc(e.obs||'')+'</textarea></div>'+
+    '<div class="acts"><button class="btn ghost-bad" data-act="del-est" data-i="'+esc(e.id)+'">Excluir</button><span class="sp"></span><button class="btn" data-act="close">Cancelar</button><button class="btn pri" data-act="save-edit-est" data-i="'+esc(e.id)+'">Salvar</button></div>');
+};
+A['save-edit-est']=function(el){
+  var e=S.estoque.find(function(x){ return x.id===el.dataset.i; }); if(!e) return;
+  var n=val('ee-n'); if(!n){ toast('O nome é obrigatório'); return; }
+  e.nome=n; e.qtd=val('ee-q')||'—'; e.forn=val('ee-f'); e.obs=val('ee-o'); e.projId=$('ee-d').value;
+  gravar('estoque',e); fechar(); renderAll(); toast('Estoque atualizado');
+};
+A['liberar-est']=function(el){
+  var e=S.estoque.find(function(x){ return x.id===el.dataset.i; }); if(!e) return;
+  e.projId=''; gravar('estoque',e); renderAll(); toast('Item liberado (sem projeto)');
+};
+A['del-est']=function(el){
+  var e=S.estoque.find(function(x){ return x.id===el.dataset.i; }); if(!e) return;
+  confirmar('Excluir do estoque?','Excluir <strong>“'+esc(e.nome)+'”</strong> do estoque? Essa ação não pode ser desfeita.','Sim, excluir',function(){
+    S.estoque=S.estoque.filter(function(x){ return x.id!==e.id; });
+    excluirVarios('estoque',[e.id]); fechar(); renderAll(); toast('Removido do estoque');
+  });
+};
+
+/* compras */
+A.export=function(){
+  var g={};
+  comprarLista().forEach(function(x){ var k=(x.it.tipoForn&&x.it.forn)?x.it.forn:'Sem fornecedor'; (g[k]=g[k]||[]).push(x); });
+  var txt='LISTA DE COMPRAS\n'+new Date().toLocaleDateString('pt-BR')+'\n\n';
+  Object.keys(g).forEach(function(k){ txt+='['+k+']\n'; g[k].forEach(function(x){ txt+='  - '+x.it.nome+' | '+(x.it.qtdComprar||x.it.qtd)+' | '+x.p.nome+'\n'; }); txt+='\n'; });
+  if(!Object.keys(g).length) txt+='Nada para comprar.\n';
+  baixar('lista-compras.txt',txt,'text/plain');
+};
+function baixar(nomeArq,conteudo,tipo){
+  var b=new Blob([conteudo],{type:tipo+';charset=utf-8'}), a=document.createElement('a');
+  a.href=URL.createObjectURL(b); a.download=nomeArq; document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },500);
+}
+
+/* mensagens */
+A['msg-send']=enviarMsg;
+A['msg-tpl']=function(el){ var t=$('msg-txt'); t.value=el.dataset.t+t.value; t.focus(); };
+A['msg-del']=function(el){
+  var m=S.mensagens.find(function(x){ return x.id===el.dataset.i; }); if(!m||m.uid!==uid) return;
+  S.mensagens=S.mensagens.filter(function(x){ return x.id!==m.id; });
+  excluirVarios('mensagens',[m.id]); renderAll(); toast('Mensagem apagada');
+};
+$('msg-txt').addEventListener('keydown',function(e){ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)) enviarMsg(); });
+
+/* menu do usuário */
+A.menu=function(){
+  abrir('<div class="mt"><h3>👤 '+esc(nome)+'</h3><button class="x" data-act="close" aria-label="Fechar">✕</button></div>'+
+    '<button class="btn menu-b" data-act="m-nome">Trocar meu nome</button>'+
+    '<button class="btn menu-b" data-act="m-codigo">Trocar o código da equipe</button>'+
+    '<button class="btn menu-b" data-act="backup">Baixar cópia dos dados (backup)</button>'+
+    '<button class="btn menu-b" data-act="sair">Sair deste aparelho</button>');
+};
+A['m-nome']=function(){
+  abrir('<div class="mt"><h3>Trocar meu nome</h3><button class="x" data-act="close" aria-label="Fechar">✕</button></div>'+
+    '<div class="field"><label for="mn-n">Seu nome</label><input id="mn-n" maxlength="40" value="'+esc(nome)+'"></div>'+
+    '<div class="acts"><button class="btn" data-act="close">Cancelar</button><button class="btn pri" data-act="save-nome">Salvar</button></div>');
+};
+A['save-nome']=function(){
+  var n=val('mn-n'); if(!n) return;
+  nome=n.slice(0,40); lsSet('cm_nome',nome); $('btn-user').textContent='👤 '+nome; fechar(); toast('Nome atualizado');
+};
+A['m-codigo']=function(){
+  abrir('<div class="mt"><h3>Trocar o código da equipe</h3><button class="x" data-act="close" aria-label="Fechar">✕</button></div>'+
+    '<div class="hint">Depois da troca, cada pessoa da equipe vai precisar digitar o código novo na próxima vez que abrir o app.</div>'+
+    '<div class="field"><label for="mc-a">Código atual</label><input id="mc-a" type="password" autocomplete="off"></div>'+
+    '<div class="field"><label for="mc-n">Código novo (pelo menos 8 caracteres)</label><input id="mc-n" type="password" autocomplete="off"></div>'+
+    '<div class="field"><label for="mc-r">Repita o código novo</label><input id="mc-r" type="password" autocomplete="off"></div>'+
+    '<p class="erro" id="mc-erro"></p>'+
+    '<div class="acts"><button class="btn" data-act="close">Cancelar</button><button class="btn pri" data-act="save-codigo">Trocar código</button></div>');
+};
+A['save-codigo']=function(){
+  var a=val('mc-a'), n=val('mc-n'), r=val('mc-r'), er=$('mc-erro');
+  if(n.length<6){ er.textContent='Use pelo menos 6 caracteres (o ideal é 8 ou mais).'; return; }
+  if(n!==r){ er.textContent='Os dois códigos novos não são iguais.'; return; }
+  rpc('app_definir_codigo',{p_novo:n,p_atual:a}).then(function(res){
+    if(res.ok){ codigo=n; lsSet('cm_codigo',n); fechar(); toast('Código trocado'); }
+    else er.textContent=msgErro(res.erro);
+  },function(){ er.textContent='Sem conexão. Tente de novo.'; });
+};
+A.backup=function(){
+  baixar('backup-controle-materiais-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(S,null,2),'application/json');
+  toast('Backup baixado');
+};
+A.sair=function(){
+  confirmar('Sair deste aparelho?','O código e o nome serão esquecidos neste aparelho. Os dados continuam salvos para a equipe.','Sair',function(){
+    lsDel('cm_codigo'); lsDel('cm_nome'); location.reload();
+  });
+};
+
+/* despacho único de cliques */
+document.addEventListener('click',function(ev){
+  var el=ev.target.closest&&ev.target.closest('[data-act]'); if(!el) return;
+  var f=A[el.dataset.act]; if(f) f(el);
+});
+
+boot();
+})();
+</script>
+</body>
+</html>
