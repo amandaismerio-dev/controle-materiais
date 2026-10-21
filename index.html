@@ -127,6 +127,19 @@ label{display:block;font-size:12px;color:var(--muted);margin:0 0 3px}
 .compose{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
 .tpl{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
 
+.prevs{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}
+.prev{position:relative}
+.prev img{height:72px;width:72px;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:block}
+.prev .rm{position:absolute;top:-8px;right:-8px;background:var(--surface);border:1px solid var(--line);border-radius:99px;width:24px;height:24px;font-size:12px;padding:0;line-height:22px;cursor:pointer}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.thumb{border:1px solid var(--line);background:var(--surface2);border-radius:8px;padding:0;cursor:pointer;overflow:hidden;min-height:44px;color:var(--muted);font-size:12px}
+.thumb img{display:block;width:120px;height:120px;object-fit:cover}
+.thumb.vazio{padding:10px 12px;cursor:default}
+.thumb.vazio[data-act]{cursor:pointer}
+.big{max-width:100%;max-height:78vh;display:block;margin:0 auto;border-radius:8px}
+.mc.wide{width:min(900px,100%)}
+.ped{border-left:3px solid var(--bad);padding-left:10px;margin-bottom:4px}
+.ped-i{font-size:15px;font-weight:600;margin:3px 0;overflow-wrap:anywhere}
 .empty{text-align:center;padding:32px 16px;color:var(--muted);font-size:14px}
 
 /* janelas */
@@ -237,13 +250,17 @@ label{display:block;font-size:12px;color:var(--muted);margin:0 0 3px}
     <section class="page" id="page-msg" hidden>
       <div class="compose">
         <label for="msg-txt">Escreva um recado para a equipe</label>
-        <textarea id="msg-txt" rows="3" maxlength="2000" placeholder="Ex.: Recebi os eletrodutos hoje. / Galera, precisa comprar disjuntor 20A."></textarea>
+        <textarea id="msg-txt" rows="3" maxlength="2000" placeholder="Ex.: Recebi os eletrodutos hoje. / Chegou uma caixa e não sei de quem é, alguém sabe?"></textarea>
         <div class="tpl">
+          <button class="btn pri sm" data-act="pedir">🛒 Pedir material</button>
+          <button class="btn sm" data-act="foto-add">📷 Foto</button>
           <button class="btn sm" data-act="msg-tpl" data-t="Recebido: ">✓ Recebido</button>
           <button class="btn sm" data-act="msg-tpl" data-t="Comprado: ">🛒 Comprado</button>
-          <button class="btn sm" data-act="msg-tpl" data-t="Precisa comprar: ">⚠️ Precisa comprar</button>
+          <button class="btn sm" data-act="msg-tpl" data-t="Chegou uma encomenda e não sei de qual projeto é. ">❓ Encomenda sem identificação</button>
         </div>
-        <div class="acts" style="margin-top:0"><button class="btn pri" data-act="msg-send">Enviar</button></div>
+        <input type="file" id="msg-foto" accept="image/*" multiple hidden>
+        <div class="prevs" id="msg-prev"></div>
+        <div class="acts" style="margin-top:0"><button class="btn pri" id="btn-msg-send" data-act="msg-send">Enviar</button></div>
       </div>
       <div id="list-msg"></div>
     </section>
@@ -277,6 +294,13 @@ var pend = 0;
 var seq = 0;
 var avisouRede = false;
 var confirmOk = null;
+var anexos = [];           // fotos escolhidas no compositor: {id, dataUrl}
+var fotoCache = {};        // id -> dataUrl
+var fotoCarregando = {};
+var fotoTentou = {};
+var fotoFalhou = {};
+var enviando = false;
+var msgKey = null;
 
 function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
 function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
@@ -497,7 +521,7 @@ function abrir(html){
   $('modal-box').innerHTML=html; $('modal').hidden=false; document.body.classList.add('noscroll');
   var f=$('modal-box').querySelector('input:not([type=checkbox]),textarea'); if(f&&!/Mobi|Android/i.test(navigator.userAgent)) f.focus();
 }
-function fechar(){ $('modal').hidden=true; $('modal-box').innerHTML=''; document.body.classList.remove('noscroll'); }
+function fechar(){ $('modal').hidden=true; $('modal-box').innerHTML=''; $('modal-box').classList.remove('wide'); document.body.classList.remove('noscroll'); }
 function confirmar(titulo,htmlTexto,botao,onOk){
   confirmOk=onOk;
   $('confirm-box').innerHTML='<div class="conf-ico">⚠️</div><h3>'+esc(titulo)+'</h3><p>'+htmlTexto+'</p><div class="conf-btns"><button class="btn" data-act="conf-no">Cancelar</button><button class="btn bad" data-act="conf-yes">'+esc(botao)+'</button></div>';
@@ -689,7 +713,7 @@ function rCompras(){
     return '<div class="grp"><div class="grp-t">🏪 '+esc(k)+' ('+g[k].length+')</div>'+g[k].map(function(x){
       var ok=x.it.statusComprar==='comprado';
       return '<article class="item'+(ok?' is-rec':'')+'"><div class="item-main"><div class="item-nome">'+esc(x.it.nome)+'</div>'+
-        '<div class="meta"><span class="chip">📁 '+esc(x.p.nome)+'</span><span>Qtd: '+esc(x.it.qtdComprar||x.it.qtd)+'</span>'+
+        '<div class="meta"><span class="chip">📁 '+esc(x.p.nome)+'</span><span>Qtd: '+esc(x.it.qtdComprar||x.it.qtd)+'</span>'+porChip(x.it)+
         '<span class="badge '+(ok?'b-ok':'b-bad')+'">'+(ok?'✓ Comprado':'Falta comprar')+'</span></div></div>'+
         '<div class="item-act">'+(ok?'':'<button class="btn ok sm" data-act="comprado" data-i="'+esc(x.it.id)+'">✓ Comprado</button>')+'</div></article>';
     }).join('')+'</div>';
@@ -703,7 +727,7 @@ function rAvisos(){
     var g={}; cl.forEach(function(x){ var k=(x.it.tipoForn&&x.it.forn)?x.it.forn:'Sem fornecedor'; (g[k]=g[k]||[]).push(x); });
     html+='<div class="grp"><div class="grp-t">🛒 Falta comprar ('+cl.length+')</div>'+Object.keys(g).map(function(k){
       return '<div class="aviso comprar"><strong>🏪 '+esc(k)+'</strong>'+g[k].map(function(x){
-        return '<div class="aviso-l"><span class="nome">'+esc(x.it.nome)+'</span><span class="chip">📁 '+esc(x.p.nome)+'</span><span class="chip">'+esc(x.it.qtdComprar||x.it.qtd)+'</span>'+
+        return '<div class="aviso-l"><span class="nome">'+esc(x.it.nome)+'</span><span class="chip">📁 '+esc(x.p.nome)+'</span><span class="chip">'+esc(x.it.qtdComprar||x.it.qtd)+'</span>'+porChip(x.it)+
           '<button class="btn ok sm" data-act="comprado" data-i="'+esc(x.it.id)+'">✓ Comprado</button></div>';
       }).join('')+'</div>';
     }).join('')+'</div>';
@@ -717,19 +741,125 @@ function rAvisos(){
 }
 
 /* ---------- Mensagens ---------- */
+function porChip(it){ return it.pedidoPor?'<span class="chip">🙋 pedido por '+esc(it.pedidoPor)+'</span>':''; }
+
+function statusPedido(m){
+  var it=S.itens.find(function(x){ return x.id===m.itemId; });
+  if(!it) return {k:'x',html:'<span class="badge b-mute">item removido</span>'};
+  if(it.status==='rec') return {k:'r',html:'<span class="badge b-ok">✓ Recebido</span>'};
+  if(it.statusComprar==='comprado') return {k:'c',html:'<span class="badge b-info">✓ Comprado, aguardando chegar</span>'};
+  return {k:'p',html:'<span class="badge b-bad">🛒 Falta comprar</span>',pendente:true};
+}
+function pedidoHTML(m){
+  var s=statusPedido(m);
+  return '<div class="ped"><div><strong>🛒 Pedido de material</strong> '+s.html+'</div>'+
+    '<div class="ped-i">'+esc(m.pNome)+(m.pQtd?' · '+esc(m.pQtd):'')+'</div>'+
+    '<div class="meta"><span class="chip">📁 '+esc(m.pDest||'—')+'</span>'+(m.pForn?'<span class="chip">🏪 '+esc(m.pForn)+'</span>':'')+'</div>'+
+    (s.pendente?'<div style="margin-top:8px"><button class="btn ok sm" data-act="comprado" data-i="'+esc(m.itemId)+'">✓ Marcar comprado</button></div>':'')+'</div>';
+}
+function fotosHTML(m){
+  if(!m.fotos||!m.fotos.length) return '';
+  return '<div class="thumbs">'+m.fotos.map(function(id){
+    if(fotoCache[id]) return '<button class="thumb" data-act="foto-ver" data-f="'+esc(id)+'" aria-label="Ampliar foto"><img src="'+esc(fotoCache[id])+'" alt="Foto da mensagem"></button>';
+    if(fotoFalhou[id]) return '<span class="thumb vazio">foto indisponível</span>';
+    if(fotoCarregando[id]) return '<span class="thumb vazio">carregando foto…</span>';
+    return '<button class="thumb vazio" data-act="foto-carregar" data-f="'+esc(id)+'">📷 Ver foto</button>';
+  }).join('')+'</div>';
+}
+function carregarFoto(id){
+  if(fotoCache[id]||fotoCarregando[id]) return;
+  fotoCarregando[id]=true; fotoTentou[id]=true;
+  rpc('app_foto_ler',{p_codigo:codigo,p_id:id}).then(function(r){
+    if(r.ok) fotoCache[id]=r.dados; else if(r.erro==='nao_encontrada') fotoFalhou[id]=true;
+  }).catch(function(){}).then(function(){
+    delete fotoCarregando[id];
+    if(tab==='msg') rMsg();
+  });
+}
 function rMsg(){
   var l=S.mensagens.slice().sort(function(a,b){ return (b.ts||'').localeCompare(a.ts||''); }).slice(0,200);
+  var key=uid+'|'+l.map(function(m){
+    var k=m.id;
+    if(m.itemId) k+=statusPedido(m).k;
+    if(m.fotos) k+=m.fotos.map(function(f){ return fotoCache[f]?'1':fotoFalhou[f]?'x':fotoCarregando[f]?'c':'0'; }).join('');
+    return k;
+  }).join(',');
+  if(key===msgKey) return;
+  msgKey=key;
   $('list-msg').innerHTML=l.length?l.map(function(m){
     var meu=m.uid===uid;
     return '<article class="msg'+(meu?' mine':'')+'"><div class="msg-h"><strong>'+esc(m.autor||'?')+'</strong><span>'+fmt(m.ts)+'</span>'+
-      (meu?'<button class="link" data-act="msg-del" data-i="'+esc(m.id)+'">apagar</button>':'')+'</div><div class="msg-t">'+esc(m.texto)+'</div></article>';
+      (meu?'<button class="link" data-act="msg-del" data-i="'+esc(m.id)+'">apagar</button>':'')+'</div>'+
+      (m.itemId?pedidoHTML(m):'')+
+      (m.texto?'<div class="msg-t">'+esc(m.texto)+'</div>':'')+
+      fotosHTML(m)+'</article>';
   }).join(''):vazio('💬','Nenhuma mensagem ainda. Escreva a primeira acima.');
+  var n=0;
+  l.forEach(function(m){ (m.fotos||[]).forEach(function(f){ if(n<12&&!fotoCache[f]&&!fotoTentou[f]){ n++; carregarFoto(f); } }); });
 }
+
+/* fotos: reduz o tamanho no próprio aparelho antes de enviar */
+function lerArquivo(file){
+  return new Promise(function(res,rej){ var r=new FileReader(); r.onload=function(){ res(r.result); }; r.onerror=function(){ rej(new Error('leitura')); }; r.readAsDataURL(file); });
+}
+function comprimir(file){
+  return new Promise(function(resolve,reject){
+    var url=URL.createObjectURL(file), img=new Image(), feito=false, t;
+    function reserva(){
+      if(feito) return; feito=true; clearTimeout(t); try{ URL.revokeObjectURL(url); }catch(e){}
+      if(file.size<=450000&&/^image\/(jpeg|png|webp)$/.test(file.type)) lerArquivo(file).then(resolve,reject);
+      else reject(new Error('foto'));
+    }
+    t=setTimeout(reserva,15000);
+    img.onload=function(){
+      if(feito) return; feito=true; clearTimeout(t); try{ URL.revokeObjectURL(url); }catch(e){}
+      try{
+        var w0=img.naturalWidth||img.width, h0=img.naturalHeight||img.height, k=Math.min(1,1600/Math.max(w0,h0));
+        var w=Math.max(1,Math.round(w0*k)), h=Math.max(1,Math.round(h0*k));
+        var c=document.createElement('canvas'), ctx;
+        function desenhar(){ c.width=w; c.height=h; ctx=c.getContext('2d'); if(!ctx) throw new Error('canvas'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,w,h); ctx.drawImage(img,0,0,w,h); }
+        desenhar();
+        var q=0.78, d=c.toDataURL('image/jpeg',q);
+        while(d.length>600000&&q>0.45){ q-=0.1; d=c.toDataURL('image/jpeg',q); }
+        while(d.length>850000&&w>400){ w=Math.round(w*0.8); h=Math.round(h*0.8); desenhar(); d=c.toDataURL('image/jpeg',0.6); }
+        resolve(d);
+      }catch(e){ reject(e); }
+    };
+    img.onerror=reserva;
+    img.src=url;
+  });
+}
+function rPrev(){
+  $('msg-prev').innerHTML=anexos.map(function(a){
+    return '<div class="prev"><img src="'+esc(a.dataUrl)+'" alt="Foto anexada"><button class="rm" data-act="foto-rm" data-i="'+esc(a.id)+'" aria-label="Remover foto">✕</button></div>';
+  }).join('');
+}
+
 function enviarMsg(){
-  var t=$('msg-txt').value.trim(); if(!t) return;
+  if(enviando) return;
+  var t=$('msg-txt').value.trim();
+  if(!t&&!anexos.length) return;
+  var fotos=anexos.slice();
   var m={id:newId(),autor:nome,uid:uid,texto:t.slice(0,2000),ts:new Date().toISOString()};
-  S.mensagens.push(m); gravar('mensagens',m);
-  $('msg-txt').value=''; marcarLido(); renderAll();
+  if(fotos.length) m.fotos=fotos.map(function(a){ return a.id; });
+  enviando=true; $('btn-msg-send').disabled=true; $('btn-msg-send').textContent=fotos.length?'Enviando foto…':'Enviando…';
+  var p=Promise.resolve();
+  fotos.forEach(function(a){
+    p=p.then(function(){
+      return rpc('app_foto_gravar',{p_codigo:codigo,p_id:a.id,p_dados:a.dataUrl}).then(function(r){
+        if(!r.ok) throw {tipo:'erro',detalhe:r.erro};
+        fotoCache[a.id]=a.dataUrl;
+      });
+    });
+  });
+  p.then(function(){
+    S.mensagens.push(m); gravar('mensagens',m);
+    $('msg-txt').value=''; anexos=[]; rPrev(); marcarLido(); renderAll();
+  }).catch(function(e){
+    toast(e&&e.tipo==='rede'?'Sem conexão. A mensagem não foi enviada.':'Não foi possível enviar a foto. Tente de novo.');
+  }).then(function(){
+    enviando=false; $('btn-msg-send').disabled=false; $('btn-msg-send').textContent='Enviar';
+  });
 }
 
 /* ---------- Construtor de listas (campos ou colar) ---------- */
@@ -992,7 +1122,64 @@ A['msg-tpl']=function(el){ var t=$('msg-txt'); t.value=el.dataset.t+t.value; t.f
 A['msg-del']=function(el){
   var m=S.mensagens.find(function(x){ return x.id===el.dataset.i; }); if(!m||m.uid!==uid) return;
   S.mensagens=S.mensagens.filter(function(x){ return x.id!==m.id; });
-  excluirVarios('mensagens',[m.id]); renderAll(); toast('Mensagem apagada');
+  (m.fotos||[]).forEach(function(f){ delete fotoCache[f]; rpc('app_foto_excluir',{p_codigo:codigo,p_id:f}).catch(function(){}); });
+  excluirVarios('mensagens',[m.id]); renderAll();
+  toast(m.itemId?'Mensagem apagada. O item continua em Compras.':'Mensagem apagada');
+};
+
+/* fotos nas mensagens */
+A['foto-add']=function(){ $('msg-foto').click(); };
+A['foto-rm']=function(el){ anexos=anexos.filter(function(a){ return a.id!==el.dataset.i; }); rPrev(); };
+A['foto-ver']=function(el){
+  var d=fotoCache[el.dataset.f]; if(!d) return;
+  abrir('<div class="mt"><h3>Foto</h3><button class="x" data-act="close" aria-label="Fechar">✕</button></div><img class="big" src="'+esc(d)+'" alt="Foto ampliada">');
+  $('modal-box').classList.add('wide');
+};
+A['foto-carregar']=function(el){ var id=el.dataset.f; delete fotoTentou[id]; delete fotoFalhou[id]; carregarFoto(id); msgKey=null; rMsg(); };
+$('msg-foto').addEventListener('change',function(ev){
+  var files=[].slice.call(ev.target.files||[]); ev.target.value='';
+  var livres=4-anexos.length;
+  if(files.length>livres){ toast('No máximo 4 fotos por mensagem'); files=files.slice(0,Math.max(livres,0)); }
+  if(!files.length) return;
+  toast('Preparando foto…');
+  files.reduce(function(p,f){
+    return p.then(function(){
+      return comprimir(f).then(function(d){ anexos.push({id:newId(),dataUrl:d}); rPrev(); }).catch(function(){ toast('Não consegui ler esta foto. Tente outra.'); });
+    });
+  },Promise.resolve());
+});
+
+/* pedir material pela conversa: cria o item em Compras e em Avisos */
+A.pedir=function(){
+  var opts='<option value="">— escolha o projeto —</option>'+S.projetos.filter(function(p){ return !p.hidden&&!p.geral; }).map(function(p){
+    return '<option value="'+esc(p.id)+'">'+esc(p.nome)+'</option>';
+  }).join('')+'<option value="__geral">Estoque geral (sem projeto definido)</option>';
+  abrir('<div class="mt"><h3>🛒 Pedir material</h3><button class="x" data-act="close" aria-label="Fechar">✕</button></div>'+
+    '<div class="hint">Registra o pedido na conversa e já coloca o item em <strong>Compras</strong> e em <strong>Avisos</strong> como “falta comprar”.</div>'+
+    '<div class="field"><label for="pd-n">Material *</label><input id="pd-n" placeholder="Ex.: Disjuntor 20A"></div>'+
+    '<div class="row2"><div class="field"><label for="pd-q">Quantidade</label><input id="pd-q" placeholder="Ex.: 10 un"></div>'+
+    '<div class="field"><label for="pd-f">Fornecedor (opcional)</label><input id="pd-f"></div></div>'+
+    '<div class="field"><label for="pd-d">Para qual projeto? *</label><select id="pd-d" style="width:100%">'+opts+'</select></div>'+
+    '<div class="field"><label for="pd-o">Observação (opcional)</label><textarea id="pd-o" rows="2" placeholder="Ex.: urgente, precisa até sexta."></textarea></div>'+
+    '<div class="acts"><button class="btn" data-act="close">Cancelar</button><button class="btn pri" data-act="save-pedido">Fazer pedido</button></div>');
+};
+A['save-pedido']=function(){
+  var n=val('pd-n'); if(!n){ toast('Informe o material'); return; }
+  var d=$('pd-d').value; if(!d){ toast('Escolha o projeto de destino'); return; }
+  var proj;
+  if(d==='__geral'){
+    proj=S.projetos.find(function(p){ return p.geral; });
+    if(!proj){ proj={id:newId(),nome:'Estoque geral',desc:'Pedidos sem projeto definido',hidden:false,geral:true}; S.projetos.push(proj); gravar('projetos',proj); }
+    else if(proj.hidden){ proj.hidden=false; gravar('projetos',proj); }
+  } else proj=projById(d);
+  if(!proj){ toast('Projeto não encontrado'); return; }
+  var qtd=val('pd-q'), forn=val('pd-f'), obs=val('pd-o');
+  var it=mkItem(proj.id,{nome:n,qtd:qtd||'—',forn:forn});
+  it.tipoComprar=true; it.statusComprar='comprar'; it.qtdComprar=qtd; it.obs=obs; it.pedidoPor=nome; it.pedidoEm=new Date().toISOString();
+  var m={id:newId(),autor:nome,uid:uid,tipo:'pedido',itemId:it.id,pNome:n,pQtd:qtd,pForn:forn,pDest:proj.nome,texto:obs,ts:new Date().toISOString()};
+  S.itens.push(it); S.mensagens.push(m);
+  gravar('itens',it).then(function(){ return gravar('mensagens',m); });
+  marcarLido(); fechar(); renderAll(); toast('Pedido registrado em Compras e Avisos');
 };
 $('msg-txt').addEventListener('keydown',function(e){ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)) enviarMsg(); });
 
