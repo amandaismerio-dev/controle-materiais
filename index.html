@@ -198,9 +198,10 @@ label{display:block;font-size:12px;color:var(--muted);margin:0 0 3px}
         <input id="f-mat-q" type="search" placeholder="Buscar material ou fornecedor…" aria-label="Buscar material ou fornecedor" autocomplete="off">
         <select id="f-mat-proj" aria-label="Filtrar por projeto"></select>
         <select id="f-mat-st" aria-label="Filtrar por situação">
-          <option value="pend">Pendentes</option><option value="rec">Recebidos</option><option value="">Todos</option>
+          <option value="pend">A caminho</option><option value="rec">Já chegaram</option><option value="">Todos</option>
         </select>
       </div>
+      <p class="hint" id="hint-mat">Materiais já comprados que ainda estão a caminho. Quando chegar, toque em <b>Chegou</b>. O que ainda falta comprar fica na aba <b>Compras</b>.</p>
       <div id="list-mat"></div>
     </section>
 
@@ -232,19 +233,16 @@ label{display:block;font-size:12px;color:var(--muted);margin:0 0 3px}
 
     <section class="page" id="page-compras" hidden>
       <div class="bar">
-        <input id="f-cp-q" type="search" placeholder="Buscar material, projeto ou fornecedor…" aria-label="Buscar em compras" autocomplete="off">
+        <input id="f-cp-q" type="search" placeholder="Buscar material, projeto, fornecedor ou quem pediu…" aria-label="Buscar em compras" autocomplete="off">
         <select id="f-cp-proj" aria-label="Filtrar por projeto"></select>
         <select id="f-cp-st" aria-label="Filtrar por situação">
           <option value="comprar">Precisa comprar</option><option value="comprado">Já comprado</option><option value="">Todos</option>
         </select>
         <button class="btn" data-act="export">Exportar lista</button>
+        <button class="btn pri" data-act="pedir">+ Adicionar para comprar</button>
       </div>
       <div id="list-compras"></div>
-    </section>
-
-    <section class="page" id="page-avisos" hidden>
-      <p class="hint">Itens que faltam comprar e itens alocados em outros projetos.</p>
-      <div id="list-avisos"></div>
+      <div id="list-aloc"></div>
     </section>
 
     <section class="page" id="page-msg" hidden>
@@ -535,7 +533,7 @@ document.addEventListener('keydown',function(e){
 });
 
 /* ---------- Abas e atualização da tela ---------- */
-var TABS=[['mat','📋','Materiais'],['proj','📁','Projetos'],['est','🏭','Estoque'],['compras','🛒','Compras'],['avisos','🔔','Avisos'],['msg','💬','Mensagens']];
+var TABS=[['mat','📦','A caminho'],['proj','📁','Projetos'],['est','🏭','Estoque'],['compras','🛒','Compras'],['msg','💬','Mensagens']];
 function setTab(t){
   tab=t;
   document.querySelectorAll('.page').forEach(function(p){ p.hidden=(p.id!=='page-'+t); });
@@ -550,7 +548,7 @@ function marcarLido(){
 function renderTabs(){
   $('tabs').innerHTML=TABS.map(function(x){
     var b='';
-    if(x[0]==='avisos'){ var c=comprarLista().length+alocLista().length; if(c) b='<span class="notif">'+c+'</span>'; }
+    if(x[0]==='compras'){ var c=comprarLista().length; if(c) b='<span class="notif">'+c+'</span>'; }
     if(x[0]==='msg'){ var m=naoLidas(); if(m) b='<span class="notif">'+m+'</span>'; }
     return '<button class="tab'+(tab===x[0]?' on':'')+'" data-act="tab" data-t="'+x[0]+'">'+x[1]+' '+x[2]+b+'</button>';
   }).join('');
@@ -558,12 +556,12 @@ function renderTabs(){
 function renderStats(){
   var pend_=0,rec=0,comprar=0;
   itensVisiveis().forEach(function(x){
-    if(x.it.status==='rec') rec++; else pend_++;
+    if(x.it.status==='rec') rec++; else if(aCaminho(x.it)) pend_++;
     if(x.it.tipoComprar&&x.it.statusComprar==='comprar') comprar++;
   });
   var livres=S.estoque.filter(function(e){ return !e.projId; }).length;
   function st(n,l,cor){ return '<div class="stat"><b'+(cor?' style="color:'+cor+'"':'')+'>'+n+'</b><span>'+l+'</span></div>'; }
-  $('stats').innerHTML=st(visProj().length,'projetos')+st(pend_,'pendentes','var(--warn-fg)')+st(rec,'recebidos','var(--ok-fg)')+st(livres,'livres no estoque','var(--ok-fg)')+st(comprar,'para comprar','var(--bad-fg)');
+  $('stats').innerHTML=st(visProj().length,'projetos')+st(pend_,'a caminho','var(--warn-fg)')+st(rec,'recebidos','var(--ok-fg)')+st(livres,'livres no estoque','var(--ok-fg)')+st(comprar,'para comprar','var(--bad-fg)');
 }
 function fillSelect(id,primeiro){
   var s=$(id); if(!s) return;
@@ -580,7 +578,6 @@ function renderAll(){
   if(tab==='proj') rProj();
   if(tab==='est') rEst();
   if(tab==='compras') rCompras();
-  if(tab==='avisos') rAvisos();
   if(tab==='msg') rMsg();
 }
 ['f-mat-q','f-mat-proj','f-mat-st'].forEach(function(id){ $(id).addEventListener('input',rMat); });
@@ -621,12 +618,13 @@ function rMat(){
   var q=val('f-mat-q').toLowerCase(), fp=$('f-mat-proj').value, fs=$('f-mat-st').value;
   var rows=itensVisiveis().filter(function(x){
     if(fp&&x.p.id!==fp) return false;
-    if(fs&&x.it.status!==fs) return false;
+    if(fs==='pend'){ if(!aCaminho(x.it)) return false; }
+    else if(fs&&x.it.status!==fs) return false;
     if(q&&x.it.nome.toLowerCase().indexOf(q)<0&&(x.it.forn||'').toLowerCase().indexOf(q)<0) return false;
     return true;
   });
   if(fs==='rec') rows.sort(function(a,b){ return (b.it.dataRec||'').localeCompare(a.it.dataRec||''); });
-  $('list-mat').innerHTML=rows.length?rows.map(function(x){ return itemHTML(x.it,x.p,q,true); }).join(''):vazio('📭','Nenhum material encontrado.');
+  $('list-mat').innerHTML=rows.length?rows.map(function(x){ return itemHTML(x.it,x.p,q,true); }).join(''):vazio('📭',fs==='pend'?'Nenhum material a caminho no momento.':'Nenhum material encontrado.');
 }
 
 /* ---------- Projetos ---------- */
@@ -698,50 +696,45 @@ function rEst(){
 }
 
 /* ---------- Compras ---------- */
+function aCaminho(it){ return it.status!=='rec' && !(it.tipoComprar&&it.statusComprar==='comprar'); }
+function fmtDia(iso){ var d=new Date(iso); return isNaN(d)?'':d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}); }
+function compradoChip(it){
+  return (it.statusComprar==='comprado'&&it.compradoPor)?'<span class="chip">✓ comprado por '+esc(it.compradoPor)+(it.compradoEm?' · '+fmtDia(it.compradoEm):'')+'</span>':'';
+}
 function rCompras(){
   var q=val('f-cp-q').toLowerCase(), fp=$('f-cp-proj').value, fs=$('f-cp-st').value;
   var rows=itensVisiveis().filter(function(x){
     if(!x.it.tipoComprar) return false;
     if(fp&&x.p.id!==fp) return false;
     if(fs&&x.it.statusComprar!==fs) return false;
-    if(q&&x.it.nome.toLowerCase().indexOf(q)<0&&x.p.nome.toLowerCase().indexOf(q)<0&&(x.it.forn||'').toLowerCase().indexOf(q)<0) return false;
+    if(q&&x.it.nome.toLowerCase().indexOf(q)<0&&x.p.nome.toLowerCase().indexOf(q)<0&&(x.it.forn||'').toLowerCase().indexOf(q)<0&&(x.it.pedidoPor||'').toLowerCase().indexOf(q)<0) return false;
     return true;
   });
-  if(!rows.length){ $('list-compras').innerHTML=vazio('🛒','Nada para comprar por aqui.'); return; }
+  rAloc();
+  if(!rows.length){ $('list-compras').innerHTML=vazio('🛒','Nada para comprar por aqui.<br>Use <strong>+ Adicionar para comprar</strong> para pedir um material.'); return; }
   var g={}; rows.forEach(function(x){ var k=(x.it.tipoForn&&x.it.forn)?x.it.forn:'Sem fornecedor'; (g[k]=g[k]||[]).push(x); });
   $('list-compras').innerHTML=Object.keys(g).map(function(k){
     return '<div class="grp"><div class="grp-t">🏪 '+esc(k)+' ('+g[k].length+')</div>'+g[k].map(function(x){
       var ok=x.it.statusComprar==='comprado';
       return '<article class="item'+(ok?' is-rec':'')+'"><div class="item-main"><div class="item-nome">'+esc(x.it.nome)+'</div>'+
-        '<div class="meta"><span class="chip">📁 '+esc(x.p.nome)+'</span><span>Qtd: '+esc(x.it.qtdComprar||x.it.qtd)+'</span>'+porChip(x.it)+
-        '<span class="badge '+(ok?'b-ok':'b-bad')+'">'+(ok?'✓ Comprado':'Falta comprar')+'</span></div></div>'+
+        '<div class="meta"><span class="chip">📁 '+esc(x.p.nome)+'</span><span>Qtd: '+esc(x.it.qtdComprar||x.it.qtd)+'</span>'+porChip(x.it)+compradoChip(x.it)+
+        '<span class="badge '+(ok?'b-ok':'b-bad')+'">'+(ok?'✓ Comprado':'Falta comprar')+'</span></div>'+
+        (x.it.obs?'<div class="obs">💬 '+esc(x.it.obs)+'</div>':'')+'</div>'+
         '<div class="item-act">'+(ok?'':'<button class="btn ok sm" data-act="comprado" data-i="'+esc(x.it.id)+'">✓ Comprado</button>')+'</div></article>';
     }).join('')+'</div>';
   }).join('');
 }
 
-/* ---------- Avisos ---------- */
-function rAvisos(){
-  var html='', cl=comprarLista(), al=alocLista();
-  if(cl.length){
-    var g={}; cl.forEach(function(x){ var k=(x.it.tipoForn&&x.it.forn)?x.it.forn:'Sem fornecedor'; (g[k]=g[k]||[]).push(x); });
-    html+='<div class="grp"><div class="grp-t">🛒 Falta comprar ('+cl.length+')</div>'+Object.keys(g).map(function(k){
-      return '<div class="aviso comprar"><strong>🏪 '+esc(k)+'</strong>'+g[k].map(function(x){
-        return '<div class="aviso-l"><span class="nome">'+esc(x.it.nome)+'</span><span class="chip">📁 '+esc(x.p.nome)+'</span><span class="chip">'+esc(x.it.qtdComprar||x.it.qtd)+'</span>'+porChip(x.it)+
-          '<button class="btn ok sm" data-act="comprado" data-i="'+esc(x.it.id)+'">✓ Comprado</button></div>';
-      }).join('')+'</div>';
-    }).join('')+'</div>';
-  }
-  if(al.length){
-    html+='<div class="grp"><div class="grp-t">⇄ Alocados em outros projetos ('+al.length+')</div>'+al.map(function(x){
-      return '<div class="aviso aloc"><strong>'+esc(x.it.nome)+'</strong><div class="meta" style="margin-top:6px"><span class="chip">📁 Origem: '+esc(x.p.nome)+'</span><span>→</span><span class="badge b-loc">📁 '+esc(x.dest.nome)+'</span><span>Qtd: '+esc(x.qtd)+'</span></div></div>';
-    }).join('')+'</div>';
-  }
-  $('list-avisos').innerHTML=html||vazio('✅','Nenhum aviso no momento.');
+/* materiais alocados em outros projetos (ficam no fim da aba Compras) */
+function rAloc(){
+  var al=alocLista(), fp=$('f-cp-proj').value;
+  if(fp) al=al.filter(function(x){ return x.p.id===fp||x.dest.id===fp; });
+  $('list-aloc').innerHTML=al.length?'<div class="grp" style="margin-top:22px"><div class="grp-t">⇄ Materiais alocados em outros projetos ('+al.length+')</div>'+al.map(function(x){
+    return '<div class="aviso aloc"><strong>'+esc(x.it.nome)+'</strong><div class="meta" style="margin-top:6px"><span class="chip">📁 Origem: '+esc(x.p.nome)+'</span><span>→</span><span class="badge b-loc">📁 '+esc(x.dest.nome)+'</span><span>Qtd: '+esc(x.qtd)+'</span></div></div>';
+  }).join('')+'</div>':'';
 }
 
-/* ---------- Mensagens ---------- */
-function porChip(it){ return it.pedidoPor?'<span class="chip">🙋 pedido por '+esc(it.pedidoPor)+'</span>':''; }
+function porChip(it){ return it.pedidoPor?'<span class="chip">🙋 pedido por '+esc(it.pedidoPor)+(it.pedidoEm?' · '+fmtDia(it.pedidoEm):'')+'</span>':''; }
 
 function statusPedido(m){
   var it=S.itens.find(function(x){ return x.id===m.itemId; });
@@ -970,6 +963,8 @@ A['save-item']=function(el){
   it.nome=n; it.qtd=val('ei-q')||'—'; it.obs=val('ei-o');
   it.tipoForn=on('forn'); it.forn=it.tipoForn?val('ei-f'):'';
   it.tipoComprar=on('comprar'); it.qtdComprar=it.tipoComprar?val('ei-qc'):''; it.statusComprar=it.tipoComprar?$('ei-sc').value:'comprar';
+  if(it.tipoComprar&&!it.pedidoPor){ it.pedidoPor=nome; it.pedidoEm=new Date().toISOString(); }
+  if(it.tipoComprar&&it.statusComprar==='comprado'&&!it.compradoPor){ it.compradoPor=nome; it.compradoEm=new Date().toISOString(); }
   it.tipoAloc=on('aloc');
   it.alocs=[].map.call(document.querySelectorAll('#al-rows .al-row'),function(r){ return {projId:r.querySelector('.al-p').value,qtd:r.querySelector('.al-q').value.trim()}; }).filter(function(a){ return a.projId; });
   gravar('itens',it); fechar(); renderAll(); toast('Item atualizado');
@@ -983,7 +978,7 @@ A['del-item']=function(el){
 };
 A.comprado=function(el){
   var it=S.itens.find(function(x){ return x.id===el.dataset.i; }); if(!it) return;
-  it.statusComprar='comprado'; gravar('itens',it); renderAll(); toast('Marcado como comprado');
+  it.statusComprar='comprado'; it.compradoPor=nome; it.compradoEm=new Date().toISOString(); gravar('itens',it); renderAll(); toast('Marcado como comprado');
 };
 
 /* lista (campos/colar) */
@@ -1154,14 +1149,14 @@ A.pedir=function(){
   var opts='<option value="">— escolha o projeto —</option>'+S.projetos.filter(function(p){ return !p.hidden&&!p.geral; }).map(function(p){
     return '<option value="'+esc(p.id)+'">'+esc(p.nome)+'</option>';
   }).join('')+'<option value="__geral">Estoque geral (sem projeto definido)</option>';
-  abrir('<div class="mt"><h3>🛒 Pedir material</h3><button class="x" data-act="close" aria-label="Fechar">✕</button></div>'+
-    '<div class="hint">Registra o pedido na conversa e já coloca o item em <strong>Compras</strong> e em <strong>Avisos</strong> como “falta comprar”.</div>'+
+  abrir('<div class="mt"><h3>🛒 Adicionar para comprar</h3><button class="x" data-act="close" aria-label="Fechar">✕</button></div>'+
+    '<div class="hint">O material entra na lista de <strong>Compras</strong>, com o seu nome como quem pediu, e o pedido aparece em <strong>Mensagens</strong> para a equipe ver.</div>'+
     '<div class="field"><label for="pd-n">Material *</label><input id="pd-n" placeholder="Ex.: Disjuntor 20A"></div>'+
     '<div class="row2"><div class="field"><label for="pd-q">Quantidade</label><input id="pd-q" placeholder="Ex.: 10 un"></div>'+
     '<div class="field"><label for="pd-f">Fornecedor (opcional)</label><input id="pd-f"></div></div>'+
     '<div class="field"><label for="pd-d">Para qual projeto? *</label><select id="pd-d" style="width:100%">'+opts+'</select></div>'+
     '<div class="field"><label for="pd-o">Observação (opcional)</label><textarea id="pd-o" rows="2" placeholder="Ex.: urgente, precisa até sexta."></textarea></div>'+
-    '<div class="acts"><button class="btn" data-act="close">Cancelar</button><button class="btn pri" data-act="save-pedido">Fazer pedido</button></div>');
+    '<div class="acts"><button class="btn" data-act="close">Cancelar</button><button class="btn pri" data-act="save-pedido">Adicionar para comprar</button></div>');
 };
 A['save-pedido']=function(){
   var n=val('pd-n'); if(!n){ toast('Informe o material'); return; }
@@ -1179,7 +1174,7 @@ A['save-pedido']=function(){
   var m={id:newId(),autor:nome,uid:uid,tipo:'pedido',itemId:it.id,pNome:n,pQtd:qtd,pForn:forn,pDest:proj.nome,texto:obs,ts:new Date().toISOString()};
   S.itens.push(it); S.mensagens.push(m);
   gravar('itens',it).then(function(){ return gravar('mensagens',m); });
-  marcarLido(); fechar(); renderAll(); toast('Pedido registrado em Compras e Avisos');
+  marcarLido(); fechar(); renderAll(); toast('Pedido registrado em Compras e em Mensagens');
 };
 $('msg-txt').addEventListener('keydown',function(e){ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)) enviarMsg(); });
 
