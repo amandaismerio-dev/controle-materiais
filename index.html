@@ -90,6 +90,7 @@ label{display:block;font-size:12px;color:var(--muted);margin:0 0 3px}
 .chegou:hover{border-color:var(--ok);color:var(--ok-fg)}
 .chegou.on{background:var(--ok);border-color:var(--ok);color:#fff}
 .chegou.on:hover{background:var(--bad);border-color:var(--bad);color:#fff}
+.item.est-ret{border-left-color:var(--muted)}
 .item.est-livre{border-left-color:var(--ok)}.item.est-dest{border-left-color:#c58a1a}.item.est-comprar{border-left-color:var(--bad)}
 @media (max-width:520px){.item{flex-direction:column}.item-act{flex-direction:row;width:100%}.item-act>*{flex:1}}
 
@@ -104,7 +105,7 @@ label{display:block;font-size:12px;color:var(--muted);margin:0 0 3px}
 .proj-b .item:last-child{border-bottom:0}
 
 /* cartões do estoque */
-.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px}
 .card-b{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;text-align:left;cursor:pointer}
 .card-b.sel{border-color:var(--pri);background:var(--surface2)}
 .card-b b{display:block;font-size:22px}.card-b span{font-size:12px;color:var(--muted)}
@@ -249,12 +250,13 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:inherit}
         <button class="card-b" id="ec-todos" data-act="est-card" data-v=""><b id="en-todos">0</b><span>Em estoque (total)</span></button>
         <button class="card-b" id="ec-livre" data-act="est-card" data-v="livre"><b id="en-livre">0</b><span>Livres (sem projeto)</span></button>
         <button class="card-b" id="ec-dest" data-act="est-card" data-v="dest"><b id="en-dest">0</b><span>Destinados a projeto</span></button>
+        <button class="card-b" id="ec-ret" data-act="est-card" data-v="ret"><b id="en-ret">0</b><span>Já retirados</span></button>
       </div>
       <div class="bar">
         <input id="f-est-q" type="search" placeholder="Buscar material ou fornecedor…" aria-label="Buscar no estoque" autocomplete="off">
         <select id="f-est-proj" aria-label="Filtrar por projeto"></select>
         <select id="f-est-st" aria-label="Filtrar por situação">
-          <option value="">Em estoque (todos)</option><option value="livre">Só livres</option><option value="dest">Só destinados</option><option value="comprar">Falta comprar</option>
+          <option value="">Em estoque (todos)</option><option value="livre">Só livres</option><option value="dest">Só destinados</option><option value="ret">Já retirados</option><option value="comprar">Falta comprar</option>
         </select>
         <button class="btn pri" data-act="novo-est">+ Adicionar ao estoque</button>
       </div>
@@ -616,7 +618,7 @@ function renderStats(){
     if(x.it.status==='rec') rec++; else if(aCaminho(x.it)) pend_++;
     if(x.it.tipoComprar&&x.it.statusComprar==='comprar') comprar++;
   });
-  var livres=S.estoque.filter(function(e){ return !e.projId; }).length;
+  var livres=S.estoque.filter(function(e){ return !e.projId&&!e.retirado; }).length;
   function st(n,l,cor){ return '<div class="stat"><b'+(cor?' style="color:'+cor+'"':'')+'>'+n+'</b><span>'+l+'</span></div>'; }
   $('stats').innerHTML=st(visProj().length,'projetos')+st(pend_,'a caminho','var(--warn-fg)')+st(rec,'recebidos','var(--ok-fg)')+st(livres,'livres no estoque','var(--ok-fg)')+st(comprar,'para comprar','var(--bad-fg)');
 }
@@ -665,6 +667,7 @@ function itemHTML(it,p,q,mostrarProj){
     (rec?'<div class="recinfo">✓ Recebido em <strong>'+fmt(it.dataRec)+'</strong>'+(it.recPor?' por '+esc(it.recPor):'')+
       (it.qtdRec&&it.qtdRec!==it.qtd?' · chegou: '+esc(it.qtdRec):'')+(it.obsRec?' · '+esc(it.obsRec):'')+
       ' <button class="link" data-act="detalhe" data-i="'+esc(it.id)+'">detalhes</button></div>':'')+
+    (rec&&it.retirado?'<div class="recinfo" style="color:var(--muted)">'+retInfoHTML(it)+'</div>':'')+
     '</div><div class="item-act">'+
     '<button class="btn sm" data-act="edit-item" data-i="'+esc(it.id)+'">Editar</button>'+
     '<button class="chegou'+(rec?' on':'')+'" data-act="chegou" data-i="'+esc(it.id)+'" title="'+(rec?'Toque de novo para desfazer':'Marcar como recebido')+'">'+(rec?'✓ Recebido':'Chegou')+'</button>'+
@@ -713,42 +716,50 @@ function rProj(){
 /* ---------- Estoque ---------- */
 function estRows(){
   var rows=[];
-  S.estoque.forEach(function(e){ rows.push({tipo:'est',sit:e.projId?'dest':'livre',nome:e.nome,qtd:e.qtd,forn:e.forn,obs:e.obs,projId:e.projId||'',e:e}); });
+  S.estoque.forEach(function(e){ rows.push({tipo:'est',sit:e.retirado?'ret':e.projId?'dest':'livre',nome:e.nome,qtd:e.qtd,forn:e.forn,obs:e.obs,projId:e.projId||'',e:e}); });
   itensVisiveis().forEach(function(x){
-    if(x.it.status==='rec') rows.push({tipo:'proj',sit:'dest',nome:x.it.nome,qtd:x.it.qtdRec||x.it.qtd,forn:x.it.forn,obs:x.it.obs,projId:x.p.id,it:x.it,data:x.it.dataRec});
+    if(x.it.status==='rec') rows.push({tipo:'proj',sit:x.it.retirado?'ret':'dest',nome:x.it.nome,qtd:x.it.qtdRec||x.it.qtd,forn:x.it.forn,obs:x.it.obs,projId:x.p.id,it:x.it,data:x.it.dataRec});
     if(x.it.tipoComprar&&x.it.statusComprar==='comprar') rows.push({tipo:'comprar',sit:'comprar',nome:x.it.nome,qtd:x.it.qtdComprar||x.it.qtd,forn:x.it.forn,obs:x.it.obs,projId:x.p.id,it:x.it});
   });
   return rows;
 }
 function rEst(){
-  var all=estRows(), em=all.filter(function(r){ return r.sit!=='comprar'; });
+  var all=estRows(), em=all.filter(function(r){ return r.sit!=='comprar'&&r.sit!=='ret'; });
+  $('en-ret').textContent=all.filter(function(r){ return r.sit==='ret'; }).length;
   $('en-todos').textContent=em.length;
   $('en-livre').textContent=em.filter(function(r){ return r.sit==='livre'; }).length;
   $('en-dest').textContent=em.filter(function(r){ return r.sit==='dest'; }).length;
   var fs=$('f-est-st').value;
   $('ec-todos').classList.toggle('sel',fs===''||fs==='comprar');
+  $('ec-ret').classList.toggle('sel',fs==='ret');
   $('ec-livre').classList.toggle('sel',fs==='livre');
   $('ec-dest').classList.toggle('sel',fs==='dest');
   var q=val('f-est-q').toLowerCase(), fp=$('f-est-proj').value;
   var rows=all.filter(function(r){
-    if(fs===''){ if(r.sit==='comprar') return false; } else if(r.sit!==fs) return false;
+    if(fs===''){ if(r.sit==='comprar'||r.sit==='ret') return false; } else if(r.sit!==fs) return false;
     if(fp&&r.projId!==fp) return false;
     if(q&&r.nome.toLowerCase().indexOf(q)<0&&(r.forn||'').toLowerCase().indexOf(q)<0) return false;
     return true;
   });
+  if(fs==='ret') rows.sort(function(a,b){ return ((b.e||b.it).retiradoEm||'').localeCompare((a.e||a.it).retiradoEm||''); });
+  if(!rows.length&&fs==='ret'){ $('list-est').innerHTML=vazio('📤','Nenhuma retirada registrada ainda.<br>Quando o instalador levar um material, use <strong>📤 Retirar</strong> no item.'); return; }
   if(!rows.length){ $('list-est').innerHTML=vazio('🏭','Nada encontrado aqui.<br>Use <strong>+ Adicionar ao estoque</strong> para cadastrar o que já está guardado.'); return; }
   $('list-est').innerHTML=rows.map(function(r){
     var proj=r.projId&&projById(r.projId);
-    var sel=r.sit==='livre'?'<span class="badge b-ok">● Livre</span>':r.sit==='dest'?'<span class="badge b-warn">🔒 Destinado</span>':'<span class="badge b-bad">🛒 Falta comprar</span>';
+    var sel=r.sit==='livre'?'<span class="badge b-ok">● Livre</span>':r.sit==='dest'?'<span class="badge b-warn">🔒 Destinado</span>':r.sit==='ret'?'<span class="badge b-mute">📤 Retirado</span>':'<span class="badge b-bad">🛒 Falta comprar</span>';
+    var reg=r.e||r.it, k=r.tipo==='est'?'est':'item';
     var acoes=r.tipo==='est'
-      ? '<button class="btn sm" data-act="edit-est" data-i="'+esc(r.e.id)+'">Editar</button>'+(r.e.projId?'<button class="btn sm" data-act="liberar-est" data-i="'+esc(r.e.id)+'">Liberar</button>':'')
+      ? '<button class="btn sm" data-act="edit-est" data-i="'+esc(r.e.id)+'">Editar</button>'+(r.e.projId&&!r.e.retirado?'<button class="btn sm" data-act="liberar-est" data-i="'+esc(r.e.id)+'">Liberar</button>':'')
       : '<button class="btn sm" data-act="edit-item" data-i="'+esc(r.it.id)+'">Editar</button>';
+    if(r.sit==='ret') acoes+='<button class="btn sm" data-act="ret-desfazer" data-k="'+k+'" data-i="'+esc(reg.id)+'">↩ Voltou ao estoque</button>';
+    else if(r.sit!=='comprar') acoes='<button class="btn pri sm" data-act="ret-abrir" data-k="'+k+'" data-i="'+esc(reg.id)+'">📤 Retirar</button>'+acoes;
     return '<article class="item est-'+r.sit+'"><div class="item-main"><div class="item-nome">'+hl(r.nome,q)+'</div>'+
       '<div class="meta">'+sel+(proj?'<span class="chip">📁 '+esc(proj.nome)+'</span>':'')+'<span>Qtd: '+esc(r.qtd||'—')+'</span>'+
       (r.forn?'<span class="chip">🏪 '+hl(r.forn,q)+'</span>':'')+
       (r.tipo==='proj'?'<span class="chip">veio do projeto</span>':r.tipo==='est'?'<span class="chip">estoque</span>':'')+'</div>'+
       (r.obs?'<div class="obs">💬 '+esc(r.obs)+'</div>':'')+
       (r.tipo==='proj'?'<div class="recinfo">Chegou em '+fmt(r.data)+'</div>':'')+
+      (r.sit==='ret'?'<div class="recinfo" style="color:var(--muted)">'+retInfoHTML(reg)+'</div>':'')+
       '</div><div class="item-act">'+acoes+'</div></article>';
   }).join('');
 }
@@ -965,7 +976,7 @@ A.chegou=function(el){
     it.status='rec'; it.dataRec=new Date().toISOString(); it.qtdRec=it.qtd; it.obsRec=''; it.recPor=nome;
     toast('✓ Recebido: '+it.nome);
   } else {
-    it.status='pend'; it.dataRec=null; it.qtdRec=null; it.obsRec=''; it.recPor='';
+    it.status='pend'; it.dataRec=null; it.qtdRec=null; it.obsRec=''; it.recPor=''; limparRetirada(it);
     toast('Recebimento desfeito');
   }
   gravar('itens',it); renderAll();
@@ -1677,6 +1688,48 @@ A['pr-salvar']=function(el){
 A['pr-sem']=function(el){
   var u=ultimoPreco(el.dataset.p,el.dataset.f); if(!u) return;
   u.semEstoque=!u.semEstoque; gravar('precos',u); renderAll(); toast(u.semEstoque?'Marcado sem estoque':'Voltou ao estoque');
+};
+
+/* ---------- Retirada do estoque (instalador levou o material) ---------- */
+function limparRetirada(x){
+  x.retirado=false; delete x.retiradoPor; delete x.retiradoEm; delete x.retiradoQtd; delete x.retiradoObs; delete x.retiradoReg;
+}
+function retInfoHTML(x){
+  return '📤 Retirado por <strong>'+esc(x.retiradoPor||'—')+'</strong> em '+fmt(x.retiradoEm)+
+    (x.retiradoQtd?' · levou: '+esc(x.retiradoQtd):'')+(x.retiradoObs?' · '+esc(x.retiradoObs):'')+(x.retiradoReg?' · registrado por '+esc(x.retiradoReg):'');
+}
+function acharReg(k,id){ return (k==='est'?S.estoque:S.itens).find(function(x){ return x.id===id; }); }
+function agoraLocalInput(){
+  var d=new Date(); function z(n){ return ('0'+n).slice(-2); }
+  return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+'T'+z(d.getHours())+':'+z(d.getMinutes());
+}
+A['ret-abrir']=function(el){
+  var k=el.dataset.k, x=acharReg(k,el.dataset.i); if(!x) return;
+  var proj=x.projId?projById(x.projId):null, semProj=(k==='est'&&!x.projId);
+  var nomes={}; S.estoque.concat(S.itens).forEach(function(y){ if(y.retiradoPor) nomes[y.retiradoPor]=1; });
+  var total=(k==='item'?(x.qtdRec||x.qtd):x.qtd)||'';
+  abrir('<div class="mt"><h3>📤 Retirar do estoque</h3><button class="x" data-act="close" aria-label="Fechar">✕</button></div>'+
+    '<div class="hint"><strong>'+esc(x.nome)+'</strong> · Qtd no estoque: '+esc(total||'—')+(proj?'<br>Projeto: '+esc(proj.nome):'')+'</div>'+
+    '<div class="field"><label for="rt-p">Quem retirou? *</label><input id="rt-p" list="lista-ret" maxlength="60" placeholder="Nome do instalador">'+
+      '<datalist id="lista-ret">'+Object.keys(nomes).map(function(n){ return '<option value="'+esc(n)+'">'; }).join('')+'</datalist></div>'+
+    '<div class="row2"><div class="field"><label for="rt-q">Quantidade retirada</label><input id="rt-q" value="'+esc(total==='—'?'':total)+'"></div>'+
+    '<div class="field"><label for="rt-dt">Data e hora</label><input id="rt-dt" type="datetime-local" value="'+agoraLocalInput()+'"></div></div>'+
+    (semProj?'<div class="field"><label for="rt-pj">Para qual projeto foi? (opcional)</label><select id="rt-pj" style="width:100%">'+projOptions('','Não informar')+'</select></div>':'')+
+    '<div class="field"><label for="rt-o">Observação (opcional)</label><textarea id="rt-o" rows="2" placeholder="Ex.: levou para a obra, devolve a sobra"></textarea></div>'+
+    '<div class="hint">Se ele levou só uma parte, escreva a quantidade em “Quantidade retirada”. O item inteiro sai da contagem do estoque, e a divisão por quantidade ainda não é automática.</div>'+
+    '<div class="acts"><button class="btn" data-act="close">Cancelar</button><button class="btn pri" data-act="ret-salvar" data-k="'+esc(k)+'" data-i="'+esc(x.id)+'">Confirmar retirada</button></div>');
+};
+A['ret-salvar']=function(el){
+  var k=el.dataset.k, x=acharReg(k,el.dataset.i); if(!x) return;
+  var por=val('rt-p'); if(!por){ toast('Informe quem retirou'); return; }
+  var dtv=val('rt-dt'), dt=dtv?new Date(dtv):new Date(); if(isNaN(dt)) dt=new Date();
+  x.retirado=true; x.retiradoPor=por.slice(0,60); x.retiradoEm=dt.toISOString(); x.retiradoQtd=val('rt-q'); x.retiradoObs=val('rt-o'); x.retiradoReg=nome;
+  var pj=$('rt-pj'); if(pj&&pj.value) x.projId=pj.value;
+  gravar(k==='est'?'estoque':'itens',x); fechar(); renderAll(); toast('Retirada registrada');
+};
+A['ret-desfazer']=function(el){
+  var k=el.dataset.k, x=acharReg(k,el.dataset.i); if(!x) return;
+  limparRetirada(x); gravar(k==='est'?'estoque':'itens',x); renderAll(); toast('Voltou ao estoque');
 };
 
 /* despacho único de cliques */
